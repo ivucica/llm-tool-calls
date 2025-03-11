@@ -201,12 +201,70 @@ def subtract_dates_return_years(later_date, earlier_date) -> dict:
     Returns:
       dict: A dictionary with the status of the operation and the difference in years, or an error message if dates are invalid.
     """
+    if later_date is None or earlier_date is None:
+        return {
+            "status": "error",
+            "message": "Invalid date: one or both dates are None"
+        }
+
     if isinstance(later_date, str): 
-      try: later_date = json.loads(later_date)
-      except: later_date = ast.literal_eval(later_date)  # https://stackoverflow.com/a/21154138 ; any security vuln?
+        try: later_date = json.loads(later_date)
+        except: later_date = ast.literal_eval(later_date)  # https://stackoverflow.com/a/21154138 ; any security vuln?
     if isinstance(earlier_date, str):
-      try: earlier_date = json.loads(earlier_date)
-      except: earlier_date = ast.literal_eval(earlier_date)
+        try: earlier_date = json.loads(earlier_date)
+        except: earlier_date = ast.literal_eval(earlier_date)
+
+    # If somehow the tool gave us "date" as the child key, extract it up.
+    if isinstance(later_date, dict) and 'date' in later_date:
+        later_date = later_date['date']
+    if isinstance(earlier_date, dict) and 'date' in earlier_date:
+        earlier_date = earlier_date['date']
+
+    # Maybe we got YYYY-MM-DD strings instead of dicts. Try splitting by -.
+    if isinstance(later_date, str):
+        try:
+            later_date = later_date.split('-')
+            later_date = {
+                "year": later_date[0],
+                "month": later_date[1],
+                "day": later_date[2]
+            }
+        except Exception as e:
+            pass
+    if isinstance(earlier_date, str):
+        try:
+            earlier_date = earlier_date.split('-')
+            earlier_date = {
+                "year": earlier_date[0],
+                "month": earlier_date[1],
+                "day": earlier_date[2]
+            }
+        except Exception as e:
+            pass
+
+
+    if  'year' not in later_date or 'month' not in later_date or 'day' not in later_date:
+        return {
+            "status": "error",
+            "message": "Invalid date: one or more keys missing in later date"
+        }
+    if 'year' not in earlier_date or 'month' not in earlier_date or 'day' not in earlier_date:
+        return {
+            "status": "error",
+            "message": "Invalid date: one or more keys missing in earlier date"
+        }
+
+    if later_date['year'] is None or later_date['month'] is None or later_date['day'] is None:
+        return {
+            "status": "error",
+            "message": "Invalid date: one or more keys is null in later date"
+        }
+    if earlier_date['year'] is None or earlier_date['month'] is None or earlier_date['day'] is None:
+        return {
+            "status": "error",
+            "message": "Invalid date: one or more keys is null in earlier date"
+        }
+
 
     try:
         later = datetime.date(
@@ -227,7 +285,7 @@ def subtract_dates_return_years(later_date, earlier_date) -> dict:
     except ValueError as e:
         return {
             "status": "error",
-            "message": f"Failed to create date object: invalid value for year, month, or day"
+            "message": f"Failed to create date object: invalid value for year, month, or day: {e}"
         }
 
     difference = (later - earlier).days
