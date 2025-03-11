@@ -135,8 +135,9 @@ DATE_SUBTRACT_TOOL = {
              "year": { "type": "number" },
              "month": { "type": "number" },
              "day": { "type": "number" },
-             "required": ["year", "month", "day"]
-          }
+          },
+          "required": ["year", "month", "day"]
+
         },
         "earlier_date": {
           "type": "object",
@@ -145,11 +146,11 @@ DATE_SUBTRACT_TOOL = {
              "year": { "type": "number" },
              "month": { "type": "number" },
              "day": { "type": "number" },
-             "required": ["year", "month", "day"]
-          }
+          },
+          "required": ["year", "month", "day"]
         },
-        "required": ["later_date", "earlier_date"]
-      }
+      },
+      "required": ["later_date", "earlier_date"]
     }
   }
 }
