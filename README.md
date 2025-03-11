@@ -47,3 +47,7 @@ Or, run LM Studio and install `mlx-community/llama-3.2-3b-instruct` from the GUI
 OPENAI_API=http://127.0.0.1:5001/v1 python3 python-use-example.py
 ```
 
+If you `mkdir cache`, then fetched articles will be stored locally.
+
+Another model that seems to work reasonably reliably is
+`lmstudio-community/mistral-nemo-instruct-2407`.

@@ -1,0 +1,1 @@
+This file exists to have Git create this cache directory.

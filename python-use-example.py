@@ -25,6 +25,14 @@ MODEL = os.getenv("OPENAI_MODEL", default="mlx-community/llama-3.2-3b-instruct")
 
 def fetch_wikipedia_content(search_query: str) -> dict:
     """Fetches wikipedia content for a given search_query"""
+    # Compute hash of the query and try loading from local cache.
+    # If not found, fetch from Wikipedia and store in cache.
+    hash_query = hash(search_query)
+    cache_file = f"cache/{hash_query}.json"
+    if os.path.exists(cache_file):
+        with open(cache_file, "r") as f:
+            return json.load(f)
+
     try:
         # Search for most relevant article
         search_url = "https://en.wikipedia.org/w/api.php"
@@ -74,11 +82,17 @@ def fetch_wikipedia_content(search_query: str) -> dict:
             }
 
         content = pages[page_id]["extract"].strip()
-        return {
+        resp = {
             "status": "success",
             "content": content,
             "title": pages[page_id]["title"],
         }
+        try:
+            with open(cache_file, "w") as f:
+                json.dump(resp, f)
+        except Exception as e:
+            print(f"Error saving cache file: {e}")
+        return resp
 
     except Exception as e:
         return {"status": "error", "message": str(e)}
