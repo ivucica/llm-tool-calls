@@ -333,6 +333,211 @@ class Spinner:
         self.write("\r")  # Move cursor to beginning of line
 
 
+def parse_tool_call(tool_call: dict[str, any]) -> list[dict[str, any]]:
+    """parse_tool_call processes the tool call and returns the response.
+
+    Args:
+        tool_call (dict): The tool call to be processed.
+
+    Returns:
+        list: A list of messages to be sent back to the model.
+    """
+    messages = []
+    try:
+        args = json.loads(tool_call.function.arguments)
+        result = None
+
+        print(f"Requested a call to {tool_call.function.name} / {tool_call.function}")
+        if tool_call.function.name == 'fetch_wikipedia_content' or tool_call.function.name == 'fetch_real_authoritative_text':
+            print(f" Fetching from wikipedia: {args['search_query']}")
+            result = fetch_wikipedia_content(args["search_query"])
+            if result is None:
+                print(f"??? None in {result}")
+
+            # Print the Wikipedia content in a formatted way
+            terminal_width = shutil.get_terminal_size().columns
+
+            print("\n" + "=" * terminal_width)
+            if result["status"] == "success":
+                print(f"\nWikipedia article: {result['title']}")
+                print("-" * terminal_width)
+                print(result["content"])
+            else:
+                print(f"\nError fetching Wikipedia content: {result['message']}")
+                print("=" * terminal_width + "\n")
+
+        elif tool_call.function.name == 'subtract_dates_return_years':
+            if 'later_date' not in args or 'earlier_date' not in args:
+                print(f" Subtracting dates: cannot subtract, args was missing dates: {args}")
+                result = {
+                    'status': 'error',
+                    'message': 'Missing required arguments later_date and/or earlier_date'
+                }
+            else:
+                print(f" Subtracting dates: {args['later_date']} - {args['earlier_date']}")
+
+                result = subtract_dates_return_years(args['later_date'], args['earlier_date'])
+                if result is None:
+                    print(f"??? None in {result}")
+
+                if result["status"] == "success":
+                    print("\nSubtracted dates gave the value:")
+                    print(result["content"])
+                else:
+                    print(f"\nError subtracting dates: {result['message']}")
+
+        if result is None:
+            print(f" Returned result {result} is none, filling response with an error.")
+            result = {
+                'status': 'error',
+                'message': f'Sorry, assistant, but the tool you requested {tool_call.function} does not exist.'
+            }
+
+        messages.append(
+            {
+                "role": "tool",
+                "content": json.dumps(result),
+                "tool_call_id": tool_call.id,
+            }
+        )
+    except KeyError as e:
+        print(f"KeyError: {e} -- returning the following response:")
+        resp = {
+            "role": "tool",
+            "content": json.dumps({
+                'status': 'error',
+                'message': f'Missing required arguments: {e}'  # Handled specially so exception is clearer, since KeyError is confusing when turned to string
+            }),
+            "tool_call_id": tool_call.id
+        }
+        print("===")
+        print(resp)
+        print("===")
+        messages.append(resp)
+    except Exception as e:
+        print(f"Exception: {e} -- returning the following response:")
+        resp = {
+            "role": "tool",
+            "content": json.dumps({
+                'status': 'error',
+                'message': str(e)
+            }),
+            "tool_call_id": tool_call.id
+        }
+        print("===")
+        print(resp)
+        print("===")
+        messages.append(resp)
+    return messages
+
+
+def ask(model: str, messages: list[dict[str, any]], tools: list[dict[str, any]], tool_iterations: int = 1) -> list[dict[str, any]]:
+    """ask sends the messages to the model and processes the tool calls.
+
+    Args:
+        model (str): The model to use for processing.
+        messages (list): The messages to send to the model.
+        tools (list): The tools to process.
+        tool_iterations (int): The number of tool iterations to process.
+
+    Returns:
+        list: Updated version of the argument 'messages', with tool responses
+            etc attached.
+    """
+    print(f"Sending a request with {len(messages)} messages in the context, offering {len(tools)} tools...")
+    if tool_iterations > 0 and len(tools) > 0:
+        with Spinner("Thinking..."):
+            response = client.chat.completions.create(
+                model=MODEL,
+                messages=messages,
+                tools=[WIKI_TOOL, WIKI_TOOL_2, DATE_SUBTRACT_TOOL],
+
+                # Tool-enabled calls can also be streaming-enabled. Then the
+                # responses in delta.tool_calls are:
+                # [{"index": 0, "id": "call_id", "function": {"arguments": "", "name": "function_name"}, "type": "function"}]
+                # [{"index": 0, "id": null, "function": {"arguments": "{\"", "name": null}, "type": null}]
+                # [{"index": 0, "id": null, "function": {"arguments": "query", "name": null}, "type": null}]
+                # [{"index": 0, "id": null, "function": {"arguments": "\":\"", "name": null}, "type": null}]
+                # null
+                # and we have to aggregate them
+            )
+
+        if response.choices[0].message.tool_calls:
+            # Handle all tool calls
+            tool_calls = response.choices[0].message.tool_calls
+
+            print(f"Tool calls encountered! Reasoning for tool calls: {response.choices[0].message.content}")
+            # Add all tool calls to messages
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": response.choices[0].message.content,
+                    "tool_calls": [
+                        {
+                            "id": tool_call.id,
+                            "type": tool_call.type,
+                            "function": tool_call.function,
+                        }
+                        for tool_call in tool_calls
+                    ],
+                }
+            )
+
+            # Process each tool call and add results
+            for tool_call in tool_calls:
+                messages += parse_tool_call(tool_call)
+
+            return ask(
+                model=MODEL,
+                messages=messages,
+                tools=tools,
+                tool_iterations=tool_iterations - 1,
+            )
+        else:
+            # We were not requested to make any tool calls.
+            return handle_nontool_response(
+                model=MODEL, messages=messages, response=response)
+    else:
+        # We were not supposed to make a tool call. Make a request without
+        # tools, but with streaming enabled.
+        print("\nAssistant:", end=" ", flush=True)
+        stream_response = client.chat.completions.create(
+            model=MODEL, messages=messages, stream=True
+        )
+        collected_content = ""
+        for chunk in stream_response:
+            if chunk.choices[0].delta.content:
+                content = chunk.choices[0].delta.content
+                print(content, end="", flush=True)
+                collected_content += content
+        print()  # New line after streaming completes
+        messages.append(
+            {
+                "role": "assistant",
+                "content": collected_content,
+            }
+        )
+
+    return messages
+
+
+def handle_nontool_response(
+        model: str, messages: list[dict[str, any]],
+        response: dict[str, any]) -> list[dict[str, any]]:
+    """Handle a non-streamed response when we do not expect tool calls."""
+    del model
+
+    # Handle regular response
+    print("\nAssistant:", response.choices[0].message.content)
+    messages.append(
+        {
+            "role": "assistant",
+            "content": response.choices[0].message.content,
+        }
+    )
+    return messages
+
+
 def chat_loop():
     """
     Main chat loop that processes user input and handles tool calls.
@@ -389,119 +594,12 @@ def chat_loop():
 
         messages.append({"role": "user", "content": user_input})
         try:
-            with Spinner("Thinking..."):
-                response = client.chat.completions.create(
-                    model=MODEL,
-                    messages=messages,
-                    tools=[WIKI_TOOL, WIKI_TOOL_2, DATE_SUBTRACT_TOOL],
-                )
-
-            if response.choices[0].message.tool_calls:
-                # Handle all tool calls
-                tool_calls = response.choices[0].message.tool_calls
-
-                # Add all tool calls to messages
-                messages.append(
-                    {
-                        "role": "assistant",
-                        "tool_calls": [
-                            {
-                                "id": tool_call.id,
-                                "type": tool_call.type,
-                                "function": tool_call.function,
-                            }
-                            for tool_call in tool_calls
-                        ],
-                    }
-                )
-
-                # Process each tool call and add results
-                for tool_call in tool_calls:
-                  try:
-                    args = json.loads(tool_call.function.arguments)
-                    result = None
-
-                    print(f"Requested a call to {tool_call.function.name} / {tool_call.function}")
-
-                    if tool_call.function.name == 'fetch_wikipedia_content' or tool_call.function.name == 'fetch_real_authoritative_text':
-                      print(f" Fetching from wikipedia: {args["search_query"]}")
-                      result = fetch_wikipedia_content(args["search_query"])
-
-                      # Print the Wikipedia content in a formatted way
-                      terminal_width = shutil.get_terminal_size().columns
-                      print("\n" + "=" * terminal_width)
-                      if result["status"] == "success":
-                          print(f"\nWikipedia article: {result['title']}")
-                          print("-" * terminal_width)
-                          print(result["content"])
-                      else:
-                          print(
-                              f"\nError fetching Wikipedia content: {result['message']}"
-                          )
-                      print("=" * terminal_width + "\n")
-
-                      if result is None: print(f"??? None in {result}")
-
-                    elif tool_call.function.name == 'subtract_dates_return_years':
-                      print(f" Subtracting dates: {args["later_date"]} - {args["earlier_date"]}")
-
-                      result = subtract_dates_return_years(args['later_date'], args['earlier_date'])
-                      if result["status"] == "success":
-                          print(f"\nSubtracted dates gave the value:")
-                          print(result["content"])
-                      else:
-                          print(
-                              f"\nError fetching Wikipedia content: {result['message']}"
-                          )
-
-                      if result is None: print(f"??? None in {result}")
-
-                    if result is None:
-                      print(f" Returned result {result} is none, filling response with an error.")
-                      result = {
-                        'status': 'error',
-                        'message': f'Sorry, assistant, but the tool you requested {tool_call.function} does not exist.'
-                      }
-
-                    messages.append(
-                        {
-                            "role": "tool",
-                            "content": json.dumps(result),
-                            "tool_call_id": tool_call.id,
-                        }
-                    )
-                  except Exception as e:
-                    resp = {"role": "tool", "content": json.dumps({'status': 'error', 'message': str(e)}), "tool_call_id": tool_call.id}
-                    print(resp)
-                    messages.append(e)
-
-                # Stream the post-tool-call response
-                print("\nAssistant:", end=" ", flush=True)
-                stream_response = client.chat.completions.create(
-                    model=MODEL, messages=messages, stream=True
-                )
-                collected_content = ""
-                for chunk in stream_response:
-                    if chunk.choices[0].delta.content:
-                        content = chunk.choices[0].delta.content
-                        print(content, end="", flush=True)
-                        collected_content += content
-                print()  # New line after streaming completes
-                messages.append(
-                    {
-                        "role": "assistant",
-                        "content": collected_content,
-                    }
-                )
-            else:
-                # Handle regular response
-                print("\nAssistant:", response.choices[0].message.content)
-                messages.append(
-                    {
-                        "role": "assistant",
-                        "content": response.choices[0].message.content,
-                    }
-                )
+            messages += ask(
+                model=MODEL,
+                messages=messages,
+                tools=[WIKI_TOOL, WIKI_TOOL_2, DATE_SUBTRACT_TOOL],
+                tool_iterations=4,
+            )
 
         except Exception as e:
             global base_url
