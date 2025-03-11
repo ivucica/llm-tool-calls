@@ -12,15 +12,61 @@ import threading
 import time
 import urllib.parse
 import urllib.request
+import typing
 
 # Third-party imports
-from openai import OpenAI
+from openai import OpenAI, pydantic_function_tool
+import pydantic
 
 # Initialize LM Studio client
 import os
 base_url = os.getenv("OPENAI_API", default="http://0.0.0.0:5001/v1")
 client = OpenAI(base_url=base_url, api_key="lm-studio")
 MODEL = os.getenv("OPENAI_MODEL", default="mlx-community/llama-3.2-3b-instruct")
+
+
+class WikipediaContentRequest(pydantic.BaseModel):
+    """Search Wikipedia and fetch the introduction of the most relevant article.
+    
+    Always use this if the user is asking for something that is likely on
+    wikipedia.
+
+    If the user has a typo in their search query, correct it before searching.
+
+    For biographies, prefer searching for that individual person's article
+    (using their full name).
+    
+    For events, prefer searching for the event name. 
+
+    For other topics, prefer searching for the most common name of the topic in
+    a way that would make sense for title of an encyclopedia article.
+
+    Don't combine multiple search queries in one call: instead of 'Nikola Tesla
+    WW1', search for 'Nikola Tesla' and 'World War 1' separately as two tool
+    calls.
+
+    Don't ask for 'first airing of X', instead ask just for 'X' since the API
+    won't correctly handle the former and may return the wrong article. For
+    example: 'first showing of The Matrix' should actually be requested with
+    query 'The Matrix'.
+
+    If you get an error in a function call, try to fix the arguments and repeat
+    the call. Match the arguments strictly: don't assume the tool can handle
+    arbitrary input, missing or misformatted parameters, etc.
+
+    Don't make a call using data you do not have; ask for data you need in the
+    first round of calls, then make the call you actually want to do in the next
+    round. For example: if you try to compute difference between 'birth of Y'
+    and 'start of Z', first make a request for an article about 'Y' and article
+    about 'Z'; then once you receive the response to those requests, make a
+    request for the difference between the dates; and only then send just a
+    response without invoking a tool.
+    """
+    search_query: str = pydantic.Field(
+        ...,
+        description="Search query for finding the Wikipedia article",
+        required=True,
+    )
 
 
 def fetch_wikipedia_content(search_query: str) -> dict:
@@ -88,7 +134,7 @@ def fetch_wikipedia_content(search_query: str) -> dict:
             "title": pages[page_id]["title"],
         }
         try:
-            with open(cache_file, "w") as f:
+            with open(cache_file, "w", encoding="utf-8") as f:
                 json.dump(resp, f)
         except Exception as e:
             print(f"Error saving cache file: {e}")
@@ -99,34 +145,10 @@ def fetch_wikipedia_content(search_query: str) -> dict:
 
 
 # Define tool for LM Studio
-WIKI_TOOL = {
-    "type": "function",
-    "function": {
-        "name": "fetch_wikipedia_content",
-        "description": (
-            "Search Wikipedia and fetch the introduction of the most relevant article. "
-            "Always use this if the user is asking for something that is likely on wikipedia. "
-            "If the user has a typo in their search query, correct it before searching. "
-            "For biographies, prefer searching for that individual person's article (using their full name). "
-            "For events, prefer searching for the event name. "
-            "For other topics, prefer searching for the most common name of the topic in a way that would make sense for an encyclopedia. "
-            "Don't combine multiple search queries in one call: instead of 'Nikola Tesla WW1', search for 'Nikola Tesla' and 'World War 1' separately as two tool calls. "
-            "Don't ask for 'first airing of X', instead ask just for 'X' since the API won't correctly handle the former and may return the wrong article. For example: 'first showing of The Matrix' should actually be requested with query 'The Matrix'. "
-            "If you get an error in a function call, try to fix the arguments and repeat the call. Match the arguments strictly: don't assume the tool can handle arbitrary input, missing or misformatted parameters, etc."
-            "Don't make a call using data you do not have; ask for data you need in the first round of calls, then make the call you actually want to do in the next round. For example: if you try to compute difference between 'birth of Y' and 'start of Z', first make a request for an article about 'Y' and article about 'Z'; then once you receive the response to those requests, make a request for the difference between the dates; and only then send just a response without invoking a tool."
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "search_query": {
-                    "type": "string",
-                    "description": "Search query for finding the Wikipedia article",
-                },
-            },
-            "required": ["search_query"],
-        },
-    },
-}
+WIKI_TOOL = pydantic_function_tool(
+    WikipediaContentRequest,
+    name="fetch_wikipedia_content",
+    description=WikipediaContentRequest.__doc__)
 
 
 import copy
@@ -136,57 +158,53 @@ WIKI_TOOL_2['function']['description'] = "Search an authoritative book and fetch
 WIKI_TOOL_2['function']['parameters']['properties']['search_query']['description'] = 'Search query for finding the authoritative text on the subject'
 
 
-DATE_SUBTRACT_TOOL = {
-  "type": "function",
-  "function": {
-    "name": "subtract_dates_return_years",
-    "description": (
-      "Compute difference in years. "
-      "Process input dates as timestamps, subtract timestamps, and return how many"
-      " years passed in-between, rounded down. Useful to compute age."
-      " If the dates are fetched from a different source, do not provide the inputs"
-      " until you received them from a different function call."
-    ),
-    "strict": True,  # for strict input requirements
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "later_date": {
-          "type": "object",
-          "description": "Year, month and date for the later (newer) of the two input dates. Must be a valid date and all fields must be non-null. Optional: what the date represents ('birthday of X', 'end of Y', 'when Z disbanded') and where the date came from ('article from authoritative source', 'own knowledge' or similar).",
-          "properties": {
-             "label": { "type": ["string", "null"] },  # optional; still needs to be in 'required' because of 'strict=true'
-             "origin": { "type": ["string", "null"] },
-             "year": { "type": "number" },  # if this were optional, we could say "year": { "type": ["number", "null"] }
-             "month": { "type": "number" },
-             "day": { "type": "number" },
-          },
-          "required": ["label", "origin", "year", "month", "day"],
-          "additionalProperties": False,  # for strict input requirements
-        },
-        "earlier_date": {
-          "type": "object",
-          "description": "Year, month and date for the earlier (older) of the two input dates. Must be a valid date and all fields must be non-null. Optional: what the date represents ('birthday of X', 'end of Y', 'when Z disbanded') and where the date came from ('article from authoritative source', 'own knowledge' or similar).",
-          "properties": {
-             "label": { "type": ["string", "null"] },
-             "origin": { "type": ["string", "null"] },
-             "year": { "type": "number" },
-             "month": { "type": "number" },
-             "day": { "type": "number" },
-          },
-          "required": ["label", "origin", "year", "month", "day"],
-          "additionalProperties": False,  # for strict input requirements
-        },
-        "reason": {
-            "type": "string",
-            "description": "Reason for the date subtraction, e.g. 'calculate age', 'find out how long ago an event happened'.",
-        },
-      },
-      "required": ["later_date", "earlier_date", "reason"],
-      "additionalProperties": False,  # for strict input requirements
-    }
-  }
-}
+class DateObject(pydantic.BaseModel):
+    """
+    Year, month and date for one of the input dates. Must be a valid date
+    and all fields must be non-null. Optional: what the date represents
+    ('birthday of X', 'end of Y', etc.) and where the date came from.
+    """
+    # Note: these hints end up being "anyOf" instead of just "type": ["string",
+    # "null"] as is documented to be expected.
+    label: typing.Optional[str] = pydantic.Field(
+        ..., description="What the date represents (null or string)."
+    )
+    origin: typing.Optional[str] = pydantic.Field(
+        ..., description="Where the date came from (null or string)."
+    )
+    year: int = pydantic.Field(..., description="Year (non-null int).")
+    month: int = pydantic.Field(..., description="Month (non-null int).")
+    day: int = pydantic.Field(..., description="Day (non-null int).")
+
+    class Config:
+        extra = pydantic.Extra.forbid  # Additional properties not allowed
+
+class DateSubtractRequest(pydantic.BaseModel):
+    """
+    Compute difference in years. Process input dates as timestamps, subtract
+    timestamps, and return how many years passed, rounded down. Useful to
+    compute age. If the dates are fetched from a different source, do not
+    provide the inputs until you received them from a different function call.
+    """
+    later_date: DateObject = pydantic.Field(...,
+        description="Later (newer) of the two input dates (must be valid)."
+    )
+    earlier_date: DateObject = pydantic.Field(...,
+        description="Earlier (older) of the two input dates (must be valid)."
+    )
+    reason: str = pydantic.Field(...,
+        description=(
+            "Reason for date subtraction, e.g. 'calculate age' or 'compute"
+            " difference between first showing of X and birth of Y.")
+    )
+
+    class Config:
+        extra = pydantic.Extra.forbid
+
+DATE_SUBTRACT_TOOL = pydantic_function_tool(
+    DateSubtractRequest,
+    name="subtract_dates_return_years",
+    description=DateSubtractRequest.__doc__)
 
 import datetime
 import ast # alternative to json that handles singlequotes as well
