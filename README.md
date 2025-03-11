@@ -18,3 +18,32 @@ The tool, as provided and modified, does not allow a chain of tool calls to be m
 a request to fetch some dates (such as birthdays) from Wikipedia followed by using a subtraction
 tool has not worked.
 
+## Examples how to run
+
+Set up:
+
+```bash
+python3 -m venv env
+. env/bin/activate
+python3 -m pip install -r requirements.txt
+```
+
+Run with ollama:
+
+```bash
+# possibly needed: 'ollama serve' before:
+ollama run llama3.2:latest
+```
+
+then in another tab:
+
+```bash
+OPENAI_API=http://127.0.0.1:11434/v1 OPENAI_MODEL=llama3.2:latest python3 python-use-example.py
+```
+
+Or, run LM Studio and install `mlx-community/llama-3.2-3b-instruct` from the GUI, then:
+
+```bash
+OPENAI_API=http://127.0.0.1:5001/v1 python3 python-use-example.py
+```
+
