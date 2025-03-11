@@ -177,14 +177,14 @@ def subtract_dates_return_years(later_date, earlier_date) -> dict:
 
     try:
         later = datetime.date(
-            later_date['year'],
-            later_date['month'],
-            later_date['day']
+            int(later_date['year']),
+            int(later_date['month']),
+            int(later_date['day'])
         )
         earlier = datetime.date(
-            earlier_date['year'],
-            earlier_date['month'],
-            earlier_date['day']
+            int(earlier_date['year']),
+            int(earlier_date['month']),
+            int(earlier_date['day'])
         )
     except KeyError as e:
         return {
