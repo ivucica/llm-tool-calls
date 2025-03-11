@@ -141,37 +141,49 @@ DATE_SUBTRACT_TOOL = {
   "function": {
     "name": "subtract_dates_return_years",
     "description": (
+      "Compute difference in years. "
       "Process input dates as timestamps, subtract timestamps, and return how many"
       " years passed in-between, rounded down. Useful to compute age."
       " If the dates are fetched from a different source, do not provide the inputs"
       " until you received them from a different function call."
     ),
+    "strict": True,  # for strict input requirements
     "parameters": {
       "type": "object",
       "properties": {
         "later_date": {
           "type": "object",
-          "description": "Year, month and date for the later (newer) of the two input dates. Must be a valid date.",
+          "description": "Year, month and date for the later (newer) of the two input dates. Must be a valid date and all fields must be non-null. Optional: what the date represents ('birthday of X', 'end of Y', 'when Z disbanded') and where the date came from ('article from authoritative source', 'own knowledge' or similar).",
           "properties": {
-             "year": { "type": "number" },
+             "label": { "type": ["string", "null"] },  # optional; still needs to be in 'required' because of 'strict=true'
+             "origin": { "type": ["string", "null"] },
+             "year": { "type": "number" },  # if this were optional, we could say "year": { "type": ["number", "null"] }
              "month": { "type": "number" },
              "day": { "type": "number" },
           },
-          "required": ["year", "month", "day"]
-
+          "required": ["label", "origin", "year", "month", "day"],
+          "additionalProperties": False,  # for strict input requirements
         },
         "earlier_date": {
           "type": "object",
-          "description": "Year, month and date for the earlier (older) of the two input dates. Must be a valid date.",
+          "description": "Year, month and date for the earlier (older) of the two input dates. Must be a valid date and all fields must be non-null. Optional: what the date represents ('birthday of X', 'end of Y', 'when Z disbanded') and where the date came from ('article from authoritative source', 'own knowledge' or similar).",
           "properties": {
+             "label": { "type": ["string", "null"] },
+             "origin": { "type": ["string", "null"] },
              "year": { "type": "number" },
              "month": { "type": "number" },
              "day": { "type": "number" },
           },
-          "required": ["year", "month", "day"]
+          "required": ["label", "origin", "year", "month", "day"],
+          "additionalProperties": False,  # for strict input requirements
+        },
+        "reason": {
+            "type": "string",
+            "description": "Reason for the date subtraction, e.g. 'calculate age', 'find out how long ago an event happened'.",
         },
       },
-      "required": ["later_date", "earlier_date"]
+      "required": ["later_date", "earlier_date", "reason"],
+      "additionalProperties": False,  # for strict input requirements
     }
   }
 }
