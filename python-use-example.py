@@ -718,7 +718,7 @@ def fetch_streamed_response(model: str, messages: list[typing.Union[ToolMessage,
                 if tool_call["id"] is None:
                     current_tool_call["function"]["arguments"] += tool_call["function"]["arguments"]
                 else:
-                    collected_tool_calls.append(dict_to_message(current_tool_call))
+                    collected_tool_calls.append(dict_to_message(current_tool_call))  # FIXME: this is not a message
                     current_tool_call = tool_call
     if current_tool_call is not None:
         collected_tool_calls.append(current_tool_call)
