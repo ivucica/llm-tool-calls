@@ -514,18 +514,18 @@ class Spinner:
         self.write("\r")  # Move cursor to beginning of line
 
 
-def parse_tool_call(tool_call: ToolCallMessage) -> list[ToolMessage]:
+def parse_tool_call(tool_call: ToolCall) -> list[ToolMessage]:
     """parse_tool_call processes the tool call and returns the response.
 
     Args:
-        tool_call (ToolCallMessage): The tool call to be processed.
+        tool_call (ToolCall): The tool call to be processed.
 
     Returns:
         list: A list of messages to be sent back to the model.
     """
-    messages = []
+    messages: list[ToolMessage] = []
     try:
-        args = json.loads(tool_call.function.arguments)
+        args: dict = json.loads(tool_call.function.arguments)
         result = None
 
         print(f"Requested a call to {tool_call.function.name} / {tool_call.function}")
