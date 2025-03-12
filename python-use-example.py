@@ -886,7 +886,7 @@ def ask(model: str, messages: list[typing.Union[ToolMessage, UserMessage, System
     else:
         # We were not supposed to make a tool call. Make a request without
         # tools, but with streaming enabled.
-        response = fetch_streamed_response(model, messages)
+        response = fetch_streamed_response(model, messages, tools=[])
         if has_tool_calls(response):
             # TODO: move to handle_tool_response()
             # Handle all tool calls
