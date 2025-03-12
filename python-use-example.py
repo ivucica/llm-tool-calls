@@ -714,18 +714,18 @@ def ask(model: str, messages: list[typing.Union[ToolMessage, ToolCallMessage, Us
             print(f"Tool calls encountered! Reasoning for tool calls: {response.choices[0].message.content}")
             # Add all tool calls to messages
             messages.append(
-                {
-                    "role": "assistant",
-                    "content": response.choices[0].message.content,
-                    "tool_calls": [
-                        ToolCallMessage(
+                AssistantMessage(
+                    role="assistant", # do we need this? it was needed on some other constructors
+                    content=response.choices[0].message.content,
+                    tool_calls=[
+                        ToolCall(
                             id=tool_call.id,
                             type=tool_call.type,
-                            function=tool_call.function,
+                            function=tool_call.function.dict(),  # why is the cast needed?
                         )
                         for tool_call in tool_calls
                     ],
-                }
+                )
             )
 
             # Process each tool call and add results
@@ -749,22 +749,22 @@ def ask(model: str, messages: list[typing.Union[ToolMessage, ToolCallMessage, Us
         if has_tool_calls(response):
             # Handle all tool calls
             tool_calls = response.choices[0].message.tool_calls
-  
+
             print(f"Tool calls encountered! Reasoning for tool calls: {response.choices[0].message.content}")
             # Add all tool calls to messages
             messages.append(
-                {
-                    "role": "assistant",
-                    "content": response.choices[0].message.content,
-                    "tool_calls": [
-                        ToolCallMessage(
+                AssistantMessage(
+                    role="assistant",
+                    content=response.choices[0].message.content,
+                    tool_calls=[
+                        ToolCall(
                             id=tool_call.id,
                             type=tool_call.type,
                             function=tool_call.function,
                         )
                         for tool_call in tool_calls
                     ],
-                }
+                )
             )
 
             # Process each tool call and add results
