@@ -952,7 +952,12 @@ def handle_nontool_response(
         print('warning: got a raw response, not a message')
 
     # Handle regular response
-    print("\nAssistant:", response.content)
+    # Print only if it was a non-streamed response since streamed responses
+    # are printed as they come in.
+    if not is_streamed_response(response):
+        print("\nAssistant:", response.content)
+    else:
+        print("\n")
     messages.append(
         response)
     return messages
