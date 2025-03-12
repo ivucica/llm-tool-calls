@@ -24,6 +24,30 @@ base_url = os.getenv("OPENAI_API", default="http://0.0.0.0:5001/v1")
 client = OpenAI(base_url=base_url, api_key="lm-studio")
 MODEL = os.getenv("OPENAI_MODEL", default="mlx-community/llama-3.2-3b-instruct")
 
+SYSTEM_PROMPT = (
+    "You are an assistant that can retrieve Wikipedia articles. "
+    "When asked about a topic, you can retrieve Wikipedia articles "
+    "and cite information from them."
+
+    " You also have a helper utility to help you compute difference"
+    " between two dates in years; you prefer to use that to do"
+    " date subtraction."
+
+    " If you are asked about a fact, you do prefer to look it up in"
+    " wikipedia rather than assuming you know the value already. For"
+    " events you believe did not happen, you simply check wikipedia."
+    " You avoid overthinking and repetitiveness in thinking."
+
+    " You have little faith in your own knowledge. You do not overthink:"
+    " you just look up facts using fetch_wikipedia_content and a"
+    " TOOL_REQUEST whenever possible. You keep your thinking stage short"
+    " and sweet, and just plan on how to get the data most efficiently."
+    " Your memory is faulty so you avoid refering to it."
+)
+
+SYSTEM_MESSAGE = SystemMessage(
+    content=SYSTEM_PROMPT,
+)
 
 class WikipediaContentRequest(pydantic.BaseModel):
     """Search Wikipedia and fetch the introduction of the most relevant article.
@@ -354,6 +378,8 @@ class Spinner:
 class Message(pydantic.BaseModel):
     role: str
     content: str
+    message_id: typing.Optional[str] = pydantic.Field(default=None, exclude=True)
+    parent_message_id: typing.Optional[str] = pydantic.Field(default=None, exclude=True)
 
 class ToolMessage(Message):
     tool_call_id: str
@@ -380,6 +406,17 @@ class ToolResponseSuccess(pydantic.BaseModel):
     status: str = "success"
     content: str
     title: str
+
+
+class Conversation:
+    def __init__(self):
+        self.messages = []
+
+    def add_message(self, message: Message):
+        self.messages.append(message)
+
+    def get_messages(self) -> list[Message]:
+        return self.messages
 
 
 def parse_tool_call(tool_call: ToolCallMessage) -> list[ToolMessage]:
@@ -654,41 +691,9 @@ def chat_loop():
     """
     Main chat loop that processes user input and handles tool calls.
     """
-    messages = [
-        SystemMessage(
-            content=(
-                "You are an assistant that can retrieve Wikipedia articles. "
-                "When asked about a topic, you can retrieve Wikipedia articles "
-                "and cite information from them."
+    conversation = Conversation()
 
-                " You also have a helper utility to help you compute difference"
-                " between two dates in years; you prefer to use that to do"
-                " date subtraction."
-
-                " If you are asked about a fact, you do prefer to look it up in"
-                " wikipedia rather than assuming you know the value already. For"
-                " events you believe did not happen, you simply check wikipedia."
-                " You avoid overthinking and repetitiveness in thinking."
-
-                " You have little faith in your own knowledge. You do not overthink:"
-                " you just look up facts using fetch_wikipedia_content and a"
-                " TOOL_REQUEST whenever possible. You keep your thinking stage short"
-                " and sweet, and just plan on how to get the data most efficiently."
-                " Your memory is faulty so you avoid refering to it."
-
-#                " It is forbidden to you to invoke tools with assumptions about"
-#                " values that you must derive by calling other tools; for example,"
-#                " if you must fetch two dates from wikipedia, you must not execute"
-#                " subtract in the same response. However, you must call all three"
-#                " because you are fully aware that not calling Wikipedia means"
-#                " some facts would be inaccurate (and you want accurate values)"
-#                " and you are also aware that you don't know how to compute"
-#                " date differences and must rely on the tool. Therefore, you are"
-#                " required to make wikipedia requests in one call, and only then"
-#                " later call date subtraction."
-            ),
-        )
-    ]
+    conversation.add_message(SYSTEM_MESSAGE)
 
     print(
         "Assistant: "
@@ -703,14 +708,17 @@ def chat_loop():
         if user_input.lower() == "quit":
             break
 
-        messages.append(UserMessage(content=user_input))
+        user_message = UserMessage(content=user_input)
+        conversation.add_message(user_message)
         try:
-            messages += ask(
+            new_messages = ask(
                 model=MODEL,
-                messages=messages,
+                messages=conversation.get_messages(),
                 tools=[WIKI_TOOL, WIKI_TOOL_2, DATE_SUBTRACT_TOOL],
                 tool_iterations=4,
             )
+            for msg in new_messages:
+                conversation.add_message(msg)
 
         except Exception as e:
             global base_url
