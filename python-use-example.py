@@ -576,6 +576,7 @@ def parse_tool_call(tool_call: ToolCallMessage) -> list[ToolMessage]:
 
         messages.append(
             ToolMessage(
+                role="tool",  # why is this not auto-set?
                 content=json.dumps(result),
                 tool_call_id=tool_call.id,
             )
@@ -583,6 +584,7 @@ def parse_tool_call(tool_call: ToolCallMessage) -> list[ToolMessage]:
     except KeyError as e:
         print(f"KeyError: {e} -- returning the following response:")
         resp = ToolMessage(
+            role="tool",
             content=json.dumps({
                 'status': 'error',
                 'message': f'Missing required arguments: {e}'  # Handled specially so exception is clearer, since KeyError is confusing when turned to string
