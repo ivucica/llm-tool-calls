@@ -381,10 +381,11 @@ class DateObject(pydantic.BaseModel):
     """
     # Note: these hints end up being "anyOf" instead of just "type": ["string",
     # "null"] as is documented to be expected.
-    label: typing.Optional[str] = pydantic.Field(
+    # Note: while that works on local models, Gemini refuses this schema.
+    label: str = pydantic.Field( #typing.Optional[str] = pydantic.Field(
         ..., description="What the date represents (null or string)."
     )
-    origin: typing.Optional[str] = pydantic.Field(
+    origin: str = pydantic.Field( # typing.Optional[str] = pydantic.Field(
         ..., description="Where the date came from (null or string)."
     )
     year: int = pydantic.Field(..., description="Year (non-null int).")
