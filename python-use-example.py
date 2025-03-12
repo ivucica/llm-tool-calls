@@ -822,36 +822,52 @@ def ask(model: str, messages: list[typing.Union[ToolMessage, UserMessage, System
     messages = copy.deepcopy(messages)
     print(f"Sending a request with {len(messages)} messages in the context, offering {len(tools)} tools...")
     if tool_iterations > 0 and len(tools) > 0:
-        with Spinner("Thinking..."):
-            response = fetch_nonstreamed_response(
-                model, 
-                messages, 
+        want_streamed = True
+        if not want_streamed:
+            with Spinner("Thinking..."):
+                response = fetch_nonstreamed_response(
+                    model,
+                    messages,
+                    tools)
+        else:
+            response = fetch_streamed_response(
+                model,
+                messages,
                 tools)
 
         if has_tool_calls(response):
             # TODO: move to handle_tool_response()
             # Handle all tool calls
-            tool_calls: list[
-                openai.types.chat.ChatCompletionMessageToolCall] = (
-                    response.choices[0].message.tool_calls)
+            
+            if not isinstance(response, AssistantMessage):
+                # Convert the response to a dict, then to a Message.
+                # This is because fetch_nonstreamed_response returns a dict,
+                # not a message; but fetch_streamed_response returns a message.
+                tool_calls: list[
+                    openai.types.chat.ChatCompletionMessageToolCall] = (
+                        response.choices[0].message.tool_calls)
 
-            print(f"Tool calls encountered! Reasoning for tool calls: {response.choices[0].message.content}")
+                print(f"Tool calls encountered! Reasoning for tool calls: {response.choices[0].message.content}")
 
-            # Add all tool calls to messages
-
-            msg = AssistantMessage(
-                role="assistant", # do we need this? it was needed on some other constructors
-                content=response.choices[0].message.content,
-                tool_calls=[
+                # Add all tool calls to 'messages'
+                tool_calls = [
                     ToolCall(
                         id=tool_call.id,
                         type=tool_call.type,
                         function=tool_call.function.dict(),  # why is the cast needed?
                     )
                     for tool_call in tool_calls
-                ],
-            )
-            messages.append(msg)
+                ]
+                msg = AssistantMessage(
+                    role="assistant", # do we need this? it was needed on some other constructors
+                    content=response.choices[0].message.content,
+                    tool_calls=tool_calls,
+                )
+                messages.append(msg)
+            else:
+                # Already in the right format.
+                tool_calls: list[ToolCall] = response.tool_calls
+                messages.append(response)
 
             # Process each tool call and add results
             for tool_call in tool_calls:
