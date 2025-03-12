@@ -162,6 +162,32 @@ class Conversation(pydantic.BaseModel):
         """Get a _copy_ all the messages in the conversation."""
         return copy.deepcopy(self.messages)
 
+# --- MODIFIED pydantic_function_tool ---
+#del pydantic_function_tool
+def pydantic_function_tool_for_debug(model: type[pydantic.BaseModel], *, name: str, description: str) -> dict:
+    """Generate the tool definition from a Pydantic model (with debugging)."""
+    schema = model.model_json_schema()
+    parameters = {
+        k: v for k, v in schema.items() if k not in ("title", "description")
+    }
+    tool_definition = {
+        "type": "function",
+        "function": {
+            "name": name,
+            "description": description,
+            "parameters": parameters,
+        },
+    }
+
+    # *** DEBUGGING: Print the generated schema ***
+    print("--- Tool Definition (JSON) ---")
+    print(json.dumps(tool_definition, indent=2))
+    print("--- End Tool Definition ---")
+
+    return tool_definition
+
+# --- END MODIFIED pydantic_function_tool ---
+
 SYSTEM_PROMPT = (
     "You are an assistant that can retrieve Wikipedia articles. "
     "Your role is identified as 'assistant', and you are helpfully "
