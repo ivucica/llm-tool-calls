@@ -689,7 +689,7 @@ def fetch_nonstreamed_response(model: str, messages: list[typing.Union[ToolMessa
     return response
 
 
-def ask(model: str, messages: list[typing.Union[ToolMessage, ToolCallMessage, UserMessage, SystemMessage, AssistantMessage]], tools: list[dict[str, any]], tool_iterations: int = 1) -> list[typing.Union[ToolMessage, ToolCallMessage, UserMessage, SystemMessage, AssistantMessage]]:
+def ask(model: str, messages: list[typing.Union[ToolMessage, UserMessage, SystemMessage, AssistantMessage]], tools: list[dict[str, any]], tool_iterations: int = 1) -> list[typing.Union[ToolMessage, UserMessage, SystemMessage, AssistantMessage]]:
     """ask sends the messages to the model and processes the tool calls.
 
     Args:
