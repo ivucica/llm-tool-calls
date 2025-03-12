@@ -963,6 +963,9 @@ def chat_loop(conversation: Conversation):
                     break
                 conversation.add_message(msg)
 
+        except openai.BadRequestError as e:
+            print(f"An error occurred: {e}")
+            break
         except Exception as e:
             global base_url
             print(
