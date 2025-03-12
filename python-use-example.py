@@ -47,6 +47,11 @@ from models.wikipedia_content_request import WikipediaContentRequest, WikipediaC
 from models.date_object import DateObject
 from models.date_subtract_request import DateSubtractRequest
 
+from absl import app, flags
+
+FLAGS = flags.FLAGS
+flags.DEFINE_string('input_file', None, 'Path to the input file containing the conversation')
+flags.DEFINE_string('output_file', None, 'Path to the output file to save the conversation')
 
 def dict_to_message(message: dict) -> Message:
     """Convert to the correct type based on the role."""
@@ -791,6 +796,20 @@ def chat_loop(conversation: Conversation):
         if user_input.lower() == "quit":
             break
 
+        if user_input.startswith("/save "):
+            filename = user_input.split(" ", 1)[1]
+            with open(filename, 'w') as f:
+                f.write(conversation.to_json())
+            print(f"Conversation saved to {filename}")
+            continue
+
+        if user_input.startswith("/load "):
+            filename = user_input.split(" ", 1)[1]
+            with open(filename, 'r') as f:
+                conversation = Conversation.from_json(f.read())
+            print(f"Conversation loaded from {filename}")
+            continue
+
         user_message = UserMessage(content=user_input)
         conversation.add_message(user_message)
         try:
@@ -834,6 +853,21 @@ def chat_loop(conversation: Conversation):
             sys.exit(1)
 
 
+def main(argv):
+    del argv  # Unused
+
+    if FLAGS.input_file:
+        with open(FLAGS.input_file, 'r') as f:
+            conversation = Conversation.from_json(f.read())
+    else:
+        conversation = Conversation()
+
+    chat_loop(conversation)
+
+    if FLAGS.output_file:
+        with open(FLAGS.output_file, 'w') as f:
+            f.write(conversation.to_json())
+
 if __name__ == "__main__":
     # At start, verify that messages include roles correctly. This should be a
     # test.
@@ -843,4 +877,4 @@ if __name__ == "__main__":
     # Assert role is user.
     assert '"role":"user"' in j, j
 
-    chat_loop(Conversation())
+    app.run(main)
