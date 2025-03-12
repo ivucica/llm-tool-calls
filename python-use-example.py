@@ -494,6 +494,8 @@ def fetch_streamed_response(model: str, messages: list[typing.Union[ToolMessage,
         model=MODEL, messages=messages, stream=True
     )
     collected_content = ""
+    collected_tool_calls = []
+    current_tool_call = None
     for chunk in stream_response:
         if chunk.choices[0].delta.content:
             content = chunk.choices[0].delta.content
@@ -502,33 +504,23 @@ def fetch_streamed_response(model: str, messages: list[typing.Union[ToolMessage,
         if chunk.choices[0].delta.get("tool_call"):
             tool_call = chunk.choices[0].delta.tool_call
             print(f"\nTool call detected: {tool_call}")
-            # Tool-enabled calls can also be streaming-enabled. Then the
-            # responses in delta.tool_calls are:
-            # [{"index": 0, "id": "call_id", "function": {"arguments": "", "name": "function_name"}, "type": "function"}]
-            # [{"index": 0, "id": null, "function": {"arguments": "{\"", "name": null}, "type": null}]
-            # [{"index": 0, "id": null, "function": {"arguments": "query", "name": null}, "type": null}]
-            # [{"index": 0, "id": null, "function": {"arguments": "\":\"", "name": null}, "type": null}]
-            # null
-            # and we have to aggregate them
-            #
-            # This does NOT do that.
-            return {
-                "choices": [
-                    {
-                        "message": {
-                            "content": collected_content,
-                            "tool_calls": [tool_call],
-                        }
-                    }
-                ]
-            }
+            if current_tool_call is None:
+                current_tool_call = tool_call
+            else:
+                if tool_call["id"] is None:
+                    current_tool_call["function"]["arguments"] += tool_call["function"]["arguments"]
+                else:
+                    collected_tool_calls.append(current_tool_call)
+                    current_tool_call = tool_call
+    if current_tool_call is not None:
+        collected_tool_calls.append(current_tool_call)
     print()  # New line after streaming completes
     return {
-        # This will be broken if we start collecting tool calls of various indexes etc.
         "choices": [
             {
                 "message": {
                     "content": collected_content,
+                    "tool_calls": collected_tool_calls,
                 }
             }
         ]
