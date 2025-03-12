@@ -847,11 +847,10 @@ def handle_nontool_response(
     return messages
 
 
-def chat_loop():
+def chat_loop(conversation: Conversation):
     """
     Main chat loop that processes user input and handles tool calls.
     """
-    conversation = Conversation()
     conversation.add_message(SYSTEM_MESSAGE)
 
     print(
@@ -870,13 +869,27 @@ def chat_loop():
         user_message = UserMessage(content=user_input)
         conversation.add_message(user_message)
         try:
-            new_messages = ask(
+            messages = conversation.get_messages()
+            replacement_messages = ask(
                 model=MODEL,
-                messages=conversation.get_messages(),
+                messages=messages,
                 tools=[WIKI_TOOL, WIKI_TOOL_2, DATE_SUBTRACT_TOOL],
                 tool_iterations=4,
             )
+            # Assume 'messages' which we submitted into ask() are also returned
+            # to us. TODO: maybe just allow ask() to submit new messages by
+            # passing in conversation?
+            new_messages = replacement_messages[len(messages):]
+            print(f"Original messages: {len(messages)}; replacement messages: {len(replacement_messages)}; new messages: {len(new_messages)}")
+
+            print(f"You have {len(new_messages)} new messages! New messages: {new_messages}")
+            x = 10 # TODO: get rid of the limiter
             for msg in new_messages:
+                # print(f"max {x} left: adding message to conversation: role={msg.role} content={msg.content}")
+                x-=1
+                if x<0:
+                    print(" WARNING! Some returned messages omitted because the limiter ran out of quota for new_messages")
+                    break
                 conversation.add_message(msg)
 
         except Exception as e:
@@ -890,9 +903,11 @@ def chat_loop():
                 f"Error details: {str(e)}\n"
                 "See https://lmstudio.ai/docs/basics/server for more information"
             )
-            exit(1)
+            # print traceback
+            import traceback
+            traceback.print_exc()
+            sys.exit(1)
 
 
 if __name__ == "__main__":
-    chat_loop()
-
+    chat_loop(Conversation())
