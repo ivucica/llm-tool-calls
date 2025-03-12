@@ -4,6 +4,7 @@ Demonstrates how an LM Studio model can query Wikipedia
 """
 
 # Standard library imports
+import copy
 import itertools
 import json
 import shutil
