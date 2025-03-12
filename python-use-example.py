@@ -609,14 +609,32 @@ def parse_tool_call(tool_call: ToolCallMessage) -> list[ToolMessage]:
     return messages
 
 
-def is_streamed_response(response: dict) -> bool:
+def is_streamed_response(response: openai.types.chat.ChatCompletion | openai.types.chat.ChatCompletionChunk) -> bool:
     """Check if the response is streamed."""
-    return response.get("choices", [{}])[0].get("delta") is not None
+    if isinstance(response, openai.types.chat.ChatCompletion):
+        return False
+    if isinstance(response, openai.types.chat.ChatCompletionChunk):
+        return bool(response.choices[0].delta)
 
 
-def has_tool_calls(response: dict) -> bool:
-    """Check if the response contains tool calls."""
-    return response.get("choices", [{}])[0].get("message", {}).get("tool_calls") is not None
+def has_tool_calls(response: openai.types.chat.ChatCompletion | openai.types.chat.ChatCompletionChunk) -> bool:
+    """Check if the response contains tool calls.
+
+    Args:
+        response (ChatCompletion): The response to check.
+    Returns:
+        bool: True if the response contains tool calls, False otherwise.
+    """
+    return (
+        (isinstance(response,
+                    openai.types.chat.ChatCompletionChunk) and
+         (response.choices[0].delta and response.choices[0].delta.tool_calls)
+        or
+        (isinstance(response,
+                    openai.types.chat.ChatCompletion) and
+         response.choices[0].message and response.choices[0].message.tool_calls)
+        )
+    )
 
 
 def fetch_streamed_response(model: str, messages: list[typing.Union[ToolMessage, ToolCallMessage, UserMessage, SystemMessage, AssistantMessage]]) -> dict:
