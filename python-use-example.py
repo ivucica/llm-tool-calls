@@ -802,7 +802,10 @@ def ask(model: str, messages: list[typing.Union[ToolMessage, UserMessage, System
     print(f"Sending a request with {len(messages)} messages in the context, offering {len(tools)} tools...")
     if tool_iterations > 0 and len(tools) > 0:
         with Spinner("Thinking..."):
-            response = fetch_nonstreamed_response(model, messages, tools)
+            response = fetch_nonstreamed_response(
+                model, 
+                messages, 
+                tools)
 
         if has_tool_calls(response):
             # TODO: move to handle_tool_response()
