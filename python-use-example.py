@@ -702,6 +702,9 @@ def ask(model: str, messages: list[typing.Union[ToolMessage, UserMessage, System
         list: Updated version of the argument 'messages', with tool responses
             etc attached.
     """
+    # TODO: repeat the request if it fails, with a backoff
+    # TODO: repeat only if assistant-role messages don't have end_turn
+
     # copy messages we received so that we are permitted to modify them
     messages = copy.deepcopy(messages)
     print(f"Sending a request with {len(messages)} messages in the context, offering {len(tools)} tools...")
@@ -710,6 +713,7 @@ def ask(model: str, messages: list[typing.Union[ToolMessage, UserMessage, System
             response = fetch_nonstreamed_response(model, messages, tools)
 
         if has_tool_calls(response):
+            # TODO: move to handle_tool_response()
             # Handle all tool calls
             tool_calls: list[
                 openai.types.chat.ChatCompletionMessageToolCall] = (
@@ -773,6 +777,7 @@ def ask(model: str, messages: list[typing.Union[ToolMessage, UserMessage, System
         # tools, but with streaming enabled.
         response = fetch_streamed_response(model, messages)
         if has_tool_calls(response):
+            # TODO: move to handle_tool_response()
             # Handle all tool calls
             tool_calls = response.choices[0].message.tool_calls
 
