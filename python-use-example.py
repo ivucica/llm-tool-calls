@@ -24,6 +24,53 @@ base_url = os.getenv("OPENAI_API", default="http://0.0.0.0:5001/v1")
 client = OpenAI(base_url=base_url, api_key="lm-studio")
 MODEL = os.getenv("OPENAI_MODEL", default="mlx-community/llama-3.2-3b-instruct")
 
+
+class Message(pydantic.BaseModel):
+    role: str
+    content: str
+    message_id: typing.Optional[str] = pydantic.Field(default=None, exclude=True)
+    parent_message_id: typing.Optional[str] = pydantic.Field(default=None, exclude=True)
+
+class ToolMessage(Message):
+    tool_call_id: str
+
+class ToolCallMessage(Message):
+    function: dict
+    id: str
+    type: str
+
+class UserMessage(Message):
+    pass
+
+class SystemMessage(Message):
+    pass
+
+class AssistantMessage(Message):
+    pass
+
+class ToolResponseError(pydantic.BaseModel):
+    status: str = "error"
+    message: str
+
+class ToolResponseSuccess(pydantic.BaseModel):
+    status: str = "success"
+    content: str
+    title: str
+
+
+class Conversation(pydantic.BaseModel):
+    messages: list[Message] = []
+
+    def add_message(self, message: Message):
+        if not message.message_id:
+            message.message_id = datetime.datetime.now().strftime("%Y%m%d%H%M%S") + str(hash(message.content))
+        if self.messages:
+            message.parent_message_id = self.messages[-1].message_id
+        self.messages.append(message)
+
+    def get_messages(self) -> list[Message]:
+        return self.messages
+
 SYSTEM_PROMPT = (
     "You are an assistant that can retrieve Wikipedia articles. "
     "Your role is identified as 'assistant', and you are helpfully "
@@ -379,53 +426,6 @@ class Spinner:
         if self.thread:
             self.thread.join()
         self.write("\r")  # Move cursor to beginning of line
-
-
-class Message(pydantic.BaseModel):
-    role: str
-    content: str
-    message_id: typing.Optional[str] = pydantic.Field(default=None, exclude=True)
-    parent_message_id: typing.Optional[str] = pydantic.Field(default=None, exclude=True)
-
-class ToolMessage(Message):
-    tool_call_id: str
-
-class ToolCallMessage(Message):
-    function: dict
-    id: str
-    type: str
-
-class UserMessage(Message):
-    pass
-
-class SystemMessage(Message):
-    pass
-
-class AssistantMessage(Message):
-    pass
-
-class ToolResponseError(pydantic.BaseModel):
-    status: str = "error"
-    message: str
-
-class ToolResponseSuccess(pydantic.BaseModel):
-    status: str = "success"
-    content: str
-    title: str
-
-
-class Conversation(pydantic.BaseModel):
-    messages: list[Message] = []
-
-    def add_message(self, message: Message):
-        if not message.message_id:
-            message.message_id = datetime.datetime.now().strftime("%Y%m%d%H%M%S") + str(hash(message.content))
-        if self.messages:
-            message.parent_message_id = self.messages[-1].message_id
-        self.messages.append(message)
-
-    def get_messages(self) -> list[Message]:
-        return self.messages
 
 
 def parse_tool_call(tool_call: ToolCallMessage) -> list[ToolMessage]:
