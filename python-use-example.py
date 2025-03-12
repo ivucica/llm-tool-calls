@@ -862,9 +862,6 @@ def chat_loop(conversation: Conversation):
             # to us. TODO: maybe just allow ask() to submit new messages by
             # passing in conversation?
             new_messages = replacement_messages[len(messages):]
-            print(f"Original messages: {len(messages)}; replacement messages: {len(replacement_messages)}; new messages: {len(new_messages)}")
-
-            print(f"You have {len(new_messages)} new messages! New messages: {new_messages}")
             x = 10 # TODO: get rid of the limiter
             for msg in new_messages:
                 # print(f"max {x} left: adding message to conversation: role={msg.role} content={msg.content}")
