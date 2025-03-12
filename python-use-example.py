@@ -685,10 +685,6 @@ def fetch_nonstreamed_response(model: str, messages: list[typing.Union[ToolMessa
         messages=[msg.dict() if not isinstance(msg, dict) else msg for msg in messages],  # TODO: why is role skipped without dict()?
         tools=tools,
     )
-    if has_tool_calls(response):
-        tool_calls = response.choices[0].message.tool_calls
-        print(f"Tool calls detected: {tool_calls} -- they will be handled by the caller.")
-
     return response
 
 
