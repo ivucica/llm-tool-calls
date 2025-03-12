@@ -716,6 +716,28 @@ def ask(model: str, messages: list[typing.Union[ToolMessage, UserMessage, System
                     response.choices[0].message.tool_calls)
 
             print(f"Tool calls encountered! Reasoning for tool calls: {response.choices[0].message.content}")
+            # TEMP: try to convert them one by one to see which one fails:
+            for tool_call in tool_calls:
+                try:
+                    print(f"Processing tool call: {tool_call}")
+                    # Example tool_call:
+                    # ChatCompletionMessageToolCall(
+                    #   id='722916325',
+                    #   function=Function(
+                    #     arguments='{"search_query":"hello"}',
+                    #     name='fetch_real_authoritative_text'),
+                    #   type='function')
+                    print(f" * ID: {tool_call.id}")
+                    print(f" * Type: {tool_call.type}")
+                    print(f" * Function: {tool_call.function.dict()}")
+                    ToolCall(id=tool_call.id,
+                             type=tool_call.type,
+                             function=tool_call.function.dict())
+                except Exception as e:
+                    print(f"Failed to process tool call: {tool_call} with error: {e}")
+                    raise e
+
+
             # Add all tool calls to messages
             messages.append(
                 AssistantMessage(
