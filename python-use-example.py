@@ -651,6 +651,9 @@ def parse_tool_call(tool_call: ToolCall) -> list[ToolMessage]:
     except Exception as e:
         print(f"Exception: {e} -- returning the following response:")
         resp = ToolMessage(
+            # Gemini does not like receiving this response, mind you.
+            # (Problem with receiving 'status': 'error' or something else?)
+            role="tool",
             content=json.dumps({
                 'status': 'error',
                 'message': str(e)
