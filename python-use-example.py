@@ -351,11 +351,42 @@ class Spinner:
         self.write("\r")  # Move cursor to beginning of line
 
 
-def parse_tool_call(tool_call: dict[str, any]) -> list[dict[str, any]]:
+class Message(pydantic.BaseModel):
+    role: str
+    content: str
+
+class ToolMessage(Message):
+    tool_call_id: str
+
+class ToolCallMessage(Message):
+    function: dict
+    id: str
+    type: str
+
+class UserMessage(Message):
+    pass
+
+class SystemMessage(Message):
+    pass
+
+class AssistantMessage(Message):
+    pass
+
+class ToolResponseError(pydantic.BaseModel):
+    status: str = "error"
+    message: str
+
+class ToolResponseSuccess(pydantic.BaseModel):
+    status: str = "success"
+    content: str
+    title: str
+
+
+def parse_tool_call(tool_call: ToolCallMessage) -> list[ToolMessage]:
     """parse_tool_call processes the tool call and returns the response.
 
     Args:
-        tool_call (dict): The tool call to be processed.
+        tool_call (ToolCallMessage): The tool call to be processed.
 
     Returns:
         list: A list of messages to be sent back to the model.
@@ -412,36 +443,33 @@ def parse_tool_call(tool_call: dict[str, any]) -> list[dict[str, any]]:
             }
 
         messages.append(
-            {
-                "role": "tool",
-                "content": json.dumps(result),
-                "tool_call_id": tool_call.id,
-            }
+            ToolMessage(
+                content=json.dumps(result),
+                tool_call_id=tool_call.id,
+            )
         )
     except KeyError as e:
         print(f"KeyError: {e} -- returning the following response:")
-        resp = {
-            "role": "tool",
-            "content": json.dumps({
+        resp = ToolMessage(
+            content=json.dumps({
                 'status': 'error',
                 'message': f'Missing required arguments: {e}'  # Handled specially so exception is clearer, since KeyError is confusing when turned to string
             }),
-            "tool_call_id": tool_call.id
-        }
+            tool_call_id=tool_call.id
+        )
         print("===")
         print(resp)
         print("===")
         messages.append(resp)
     except Exception as e:
         print(f"Exception: {e} -- returning the following response:")
-        resp = {
-            "role": "tool",
-            "content": json.dumps({
+        resp = ToolMessage(
+            content=json.dumps({
                 'status': 'error',
                 'message': str(e)
             }),
-            "tool_call_id": tool_call.id
-        }
+            tool_call_id=tool_call.id
+        )
         print("===")
         print(resp)
         print("===")
@@ -449,7 +477,7 @@ def parse_tool_call(tool_call: dict[str, any]) -> list[dict[str, any]]:
     return messages
 
 
-def ask(model: str, messages: list[dict[str, any]], tools: list[dict[str, any]], tool_iterations: int = 1) -> list[dict[str, any]]:
+def ask(model: str, messages: list[typing.Union[ToolMessage, ToolCallMessage, UserMessage, SystemMessage, AssistantMessage]], tools: list[dict[str, any]], tool_iterations: int = 1) -> list[typing.Union[ToolMessage, ToolCallMessage, UserMessage, SystemMessage, AssistantMessage]]:
     """ask sends the messages to the model and processes the tool calls.
 
     Args:
@@ -491,11 +519,11 @@ def ask(model: str, messages: list[dict[str, any]], tools: list[dict[str, any]],
                     "role": "assistant",
                     "content": response.choices[0].message.content,
                     "tool_calls": [
-                        {
-                            "id": tool_call.id,
-                            "type": tool_call.type,
-                            "function": tool_call.function,
-                        }
+                        ToolCallMessage(
+                            id=tool_call.id,
+                            type=tool_call.type,
+                            function=tool_call.function,
+                        )
                         for tool_call in tool_calls
                     ],
                 }
@@ -540,8 +568,8 @@ def ask(model: str, messages: list[dict[str, any]], tools: list[dict[str, any]],
 
 
 def handle_nontool_response(
-        model: str, messages: list[dict[str, any]],
-        response: dict[str, any]) -> list[dict[str, any]]:
+        model: str, messages: list[typing.Union[ToolMessage, ToolCallMessage, UserMessage, SystemMessage, AssistantMessage]],
+        response: dict[str, any]) -> list[typing.Union[ToolMessage, ToolCallMessage, UserMessage, SystemMessage, AssistantMessage]]:
     """Handle a non-streamed response when we do not expect tool calls."""
     del model
 
@@ -561,9 +589,8 @@ def chat_loop():
     Main chat loop that processes user input and handles tool calls.
     """
     messages = [
-        {
-            "role": "system",
-            "content": (
+        SystemMessage(
+            content=(
                 "You are an assistant that can retrieve Wikipedia articles. "
                 "When asked about a topic, you can retrieve Wikipedia articles "
                 "and cite information from them."
@@ -594,7 +621,7 @@ def chat_loop():
 #                " required to make wikipedia requests in one call, and only then"
 #                " later call date subtraction."
             ),
-        }
+        )
     ]
 
     print(
@@ -610,7 +637,7 @@ def chat_loop():
         if user_input.lower() == "quit":
             break
 
-        messages.append({"role": "user", "content": user_input})
+        messages.append(UserMessage(content=user_input))
         try:
             messages += ask(
                 model=MODEL,
@@ -635,5 +662,4 @@ def chat_loop():
 
 if __name__ == "__main__":
     chat_loop()
-
 
