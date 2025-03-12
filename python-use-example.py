@@ -477,6 +477,77 @@ def parse_tool_call(tool_call: ToolCallMessage) -> list[ToolMessage]:
     return messages
 
 
+def is_streamed_response(response: dict) -> bool:
+    """Check if the response is streamed."""
+    return response.get("choices", [{}])[0].get("delta") is not None
+
+
+def has_tool_calls(response: dict) -> bool:
+    """Check if the response contains tool calls."""
+    return response.get("choices", [{}])[0].get("message", {}).get("tool_calls") is not None
+
+
+def fetch_streamed_response(model: str, messages: list[typing.Union[ToolMessage, ToolCallMessage, UserMessage, SystemMessage, AssistantMessage]]) -> dict:
+    """Fetch a streamed response from the model."""
+    print("\nAssistant:", end=" ", flush=True)
+    stream_response = client.chat.completions.create(
+        model=MODEL, messages=messages, stream=True
+    )
+    collected_content = ""
+    for chunk in stream_response:
+        if chunk.choices[0].delta.content:
+            content = chunk.choices[0].delta.content
+            print(content, end="", flush=True)
+            collected_content += content
+        if chunk.choices[0].delta.get("tool_call"):
+            tool_call = chunk.choices[0].delta.tool_call
+            print(f"\nTool call detected: {tool_call}")
+            # Tool-enabled calls can also be streaming-enabled. Then the
+            # responses in delta.tool_calls are:
+            # [{"index": 0, "id": "call_id", "function": {"arguments": "", "name": "function_name"}, "type": "function"}]
+            # [{"index": 0, "id": null, "function": {"arguments": "{\"", "name": null}, "type": null}]
+            # [{"index": 0, "id": null, "function": {"arguments": "query", "name": null}, "type": null}]
+            # [{"index": 0, "id": null, "function": {"arguments": "\":\"", "name": null}, "type": null}]
+            # null
+            # and we have to aggregate them
+            #
+            # This does NOT do that.
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "content": collected_content,
+                            "tool_calls": [tool_call],
+                        }
+                    }
+                ]
+            }
+    print()  # New line after streaming completes
+    return {
+        # This will be broken if we start collecting tool calls of various indexes etc.
+        "choices": [
+            {
+                "message": {
+                    "content": collected_content,
+                }
+            }
+        ]
+    }
+
+
+def fetch_nonstreamed_response(model: str, messages: list[typing.Union[ToolMessage, ToolCallMessage, UserMessage, SystemMessage, AssistantMessage]], tools: list[dict[str, any]]) -> dict:
+    """Fetch a non-streamed response from the model."""
+    response = client.chat.completions.create(
+        model=MODEL,
+        messages=messages,
+        tools=tools,
+    )
+    if has_tool_calls(response):
+        tool_calls = response.choices[0].message.tool_calls
+        print(f"Tool calls detected: {tool_calls}")
+    return response
+
+
 def ask(model: str, messages: list[typing.Union[ToolMessage, ToolCallMessage, UserMessage, SystemMessage, AssistantMessage]], tools: list[dict[str, any]], tool_iterations: int = 1) -> list[typing.Union[ToolMessage, ToolCallMessage, UserMessage, SystemMessage, AssistantMessage]]:
     """ask sends the messages to the model and processes the tool calls.
 
@@ -493,22 +564,9 @@ def ask(model: str, messages: list[typing.Union[ToolMessage, ToolCallMessage, Us
     print(f"Sending a request with {len(messages)} messages in the context, offering {len(tools)} tools...")
     if tool_iterations > 0 and len(tools) > 0:
         with Spinner("Thinking..."):
-            response = client.chat.completions.create(
-                model=MODEL,
-                messages=messages,
-                tools=[WIKI_TOOL, WIKI_TOOL_2, DATE_SUBTRACT_TOOL],
+            response = fetch_nonstreamed_response(model, messages, tools)
 
-                # Tool-enabled calls can also be streaming-enabled. Then the
-                # responses in delta.tool_calls are:
-                # [{"index": 0, "id": "call_id", "function": {"arguments": "", "name": "function_name"}, "type": "function"}]
-                # [{"index": 0, "id": null, "function": {"arguments": "{\"", "name": null}, "type": null}]
-                # [{"index": 0, "id": null, "function": {"arguments": "query", "name": null}, "type": null}]
-                # [{"index": 0, "id": null, "function": {"arguments": "\":\"", "name": null}, "type": null}]
-                # null
-                # and we have to aggregate them
-            )
-
-        if response.choices[0].message.tool_calls:
+        if has_tool_calls(response):
             # Handle all tool calls
             tool_calls = response.choices[0].message.tool_calls
 
@@ -546,25 +604,41 @@ def ask(model: str, messages: list[typing.Union[ToolMessage, ToolCallMessage, Us
     else:
         # We were not supposed to make a tool call. Make a request without
         # tools, but with streaming enabled.
-        print("\nAssistant:", end=" ", flush=True)
-        stream_response = client.chat.completions.create(
-            model=MODEL, messages=messages, stream=True
-        )
-        collected_content = ""
-        for chunk in stream_response:
-            if chunk.choices[0].delta.content:
-                content = chunk.choices[0].delta.content
-                print(content, end="", flush=True)
-                collected_content += content
-        print()  # New line after streaming completes
-        messages.append(
-            {
-                "role": "assistant",
-                "content": collected_content,
-            }
-        )
+        response = fetch_streamed_response(model, messages)
+        if has_tool_calls(response):
+            # Handle all tool calls
+            tool_calls = response.choices[0].message.tool_calls
+  
+            print(f"Tool calls encountered! Reasoning for tool calls: {response.choices[0].message.content}")
+            # Add all tool calls to messages
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": response.choices[0].message.content,
+                    "tool_calls": [
+                        ToolCallMessage(
+                            id=tool_call.id,
+                            type=tool_call.type,
+                            function=tool_call.function,
+                        )
+                        for tool_call in tool_calls
+                    ],
+                }
+            )
 
-    return messages
+            # Process each tool call and add results
+            for tool_call in tool_calls:
+                messages += parse_tool_call(tool_call)
+
+            return ask(
+                model=MODEL,
+                messages=messages,
+                tools=tools,
+                tool_iterations=tool_iterations - 1,
+            )
+        else:
+            return handle_nontool_response(
+                model=MODEL, messages=messages, response=response)
 
 
 def handle_nontool_response(
