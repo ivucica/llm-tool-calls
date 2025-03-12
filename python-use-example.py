@@ -910,4 +910,12 @@ def chat_loop(conversation: Conversation):
 
 
 if __name__ == "__main__":
+    # At start, verify that messages include roles correctly. This should be a
+    # test.
+    m = UserMessage(content="Hello")
+    # Generate JSON.
+    j = m.model_dump_json()
+    # Assert role is user.
+    assert '"role":"user"' in j, j
+
     chat_loop(Conversation())
