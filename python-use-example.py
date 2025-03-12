@@ -44,7 +44,7 @@ class Message(pydantic.BaseModel):
     content: str|None = pydantic.Field(None, description="The content of the message (may be omitted if only tool calls are requested)", skip_defaults=True)
     message_id: typing.Optional[str] = pydantic.Field(default=None, exclude=True)
     parent_message_id: typing.Optional[str] = pydantic.Field(default=None, exclude=True)
-    recipient: typing.Optional[str] = pydantic.Field(default=None, description="The recipient of the message, e.g. browser for general tool use, or functions.foo for JSON-formatted function calling")
+    recipient: typing.Optional[str] = pydantic.Field(default=None, description="The recipient of the message, e.g. browser for general tool use, or functions.foo for JSON-formatted function calling", exclude_unset=True)
 
     # Example of multimodal content, as JSON:
     # [
