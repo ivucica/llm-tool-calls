@@ -783,19 +783,36 @@ def ask(model: str, messages: list[typing.Union[ToolMessage, ToolCallMessage, Us
 
 
 def handle_nontool_response(
-        model: str, messages: list[typing.Union[ToolMessage, ToolCallMessage, UserMessage, SystemMessage, AssistantMessage]],
-        response: dict[str, any]) -> list[typing.Union[ToolMessage, ToolCallMessage, UserMessage, SystemMessage, AssistantMessage]]:
-    """Handle a non-streamed response when we do not expect tool calls."""
+        model: str,
+        messages: list[typing.Union[
+            ToolMessage, UserMessage, SystemMessage, AssistantMessage,
+            Message]],
+        response: typing.Union[
+            ToolMessage, UserMessage, SystemMessage, AssistantMessage,
+            Message,
+            openai.types.chat.ChatCompletion, openai.types.chat.ChatCompletionChunk]
+) -> list[typing.Union[
+    ToolMessage, UserMessage, SystemMessage, AssistantMessage, Message]]:
+    """Handle either streamed or nonstreamed response.
+    
+    Main goal right now is to add the response to the messages list and return
+    the updated list. Handling tool calls is more complicated.
+    """
     del model
 
+    if isinstance(response, openai.types.chat.ChatCompletion):
+        # Convert the response to a dict, then to a Message.
+        response = dict_to_message(response.choices[0].message.dict())
+        print('warning: got a raw response, not a message')
+    elif isinstance(response, openai.types.chat.ChatCompletionChunk):
+        # Convert the response to a dict, then to a Message.
+        response = dict_to_message(response.choices[0].delta.dict())
+        print('warning: got a raw response, not a message')
+
     # Handle regular response
-    print("\nAssistant:", response.choices[0].message.content)
+    print("\nAssistant:", response.content)
     messages.append(
-        {
-            "role": "assistant",
-            "content": response.choices[0].message.content,
-        }
-    )
+        response)
     return messages
 
 
