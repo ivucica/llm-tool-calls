@@ -814,20 +814,20 @@ def ask(model: str, messages: list[typing.Union[ToolMessage, UserMessage, System
             print(f"Tool calls encountered! Reasoning for tool calls: {response.choices[0].message.content}")
 
             # Add all tool calls to messages
-            messages.append(
-                AssistantMessage(
-                    role="assistant", # do we need this? it was needed on some other constructors
-                    content=response.choices[0].message.content,
-                    tool_calls=[
-                        ToolCall(
-                            id=tool_call.id,
-                            type=tool_call.type,
-                            function=tool_call.function.dict(),  # why is the cast needed?
-                        )
-                        for tool_call in tool_calls
-                    ],
-                )
+
+            msg = AssistantMessage(
+                role="assistant", # do we need this? it was needed on some other constructors
+                content=response.choices[0].message.content,
+                tool_calls=[
+                    ToolCall(
+                        id=tool_call.id,
+                        type=tool_call.type,
+                        function=tool_call.function.dict(),  # why is the cast needed?
+                    )
+                    for tool_call in tool_calls
+                ],
             )
+            messages.append(msg)
 
             # Process each tool call and add results
             for tool_call in tool_calls:
