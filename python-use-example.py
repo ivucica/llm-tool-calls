@@ -675,16 +675,17 @@ def fetch_streamed_response(model: str, messages: list[typing.Union[ToolMessage,
     )
 
 
-def fetch_nonstreamed_response(model: str, messages: list[typing.Union[ToolMessage, ToolCallMessage, UserMessage, SystemMessage, AssistantMessage]], tools: list[dict[str, any]]) -> dict:
+def fetch_nonstreamed_response(model: str, messages: list[typing.Union[ToolMessage, UserMessage, SystemMessage, AssistantMessage]], tools: list[dict[str, any]]) -> dict:
     """Fetch a non-streamed response from the model."""
     response = client.chat.completions.create(
-        model=MODEL,
-        messages=messages,
+        model=model,
+        messages=[msg.dict() if not isinstance(msg, dict) else msg for msg in messages],  # TODO: why is role skipped without dict()?
         tools=tools,
     )
     if has_tool_calls(response):
         tool_calls = response.choices[0].message.tool_calls
-        print(f"Tool calls detected: {tool_calls}")
+        print(f"Tool calls detected: {tool_calls} -- they will be handled by the caller.")
+
     return response
 
 
