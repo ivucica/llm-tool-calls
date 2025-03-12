@@ -26,6 +26,12 @@ MODEL = os.getenv("OPENAI_MODEL", default="mlx-community/llama-3.2-3b-instruct")
 
 SYSTEM_PROMPT = (
     "You are an assistant that can retrieve Wikipedia articles. "
+    "Your role is identified as 'assistant', and you are helpfully "
+    "answering questions to the individual with the role 'user', "
+    "and you can also invoke tools to help you answer questions; "
+    "those machine-generated responses will be provided to you "
+    "with the role 'tool'. "
+
     "When asked about a topic, you can retrieve Wikipedia articles "
     "and cite information from them."
 
@@ -695,7 +701,6 @@ def chat_loop():
     Main chat loop that processes user input and handles tool calls.
     """
     conversation = Conversation()
-
     conversation.add_message(SYSTEM_MESSAGE)
 
     print(
