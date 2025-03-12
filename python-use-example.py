@@ -711,7 +711,9 @@ def ask(model: str, messages: list[typing.Union[ToolMessage, UserMessage, System
 
         if has_tool_calls(response):
             # Handle all tool calls
-            tool_calls = response.choices[0].message.tool_calls
+            tool_calls: list[
+                openai.types.chat.ChatCompletionMessageToolCall] = (
+                    response.choices[0].message.tool_calls)
 
             print(f"Tool calls encountered! Reasoning for tool calls: {response.choices[0].message.content}")
             # Add all tool calls to messages
