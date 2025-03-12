@@ -408,11 +408,14 @@ class ToolResponseSuccess(pydantic.BaseModel):
     title: str
 
 
-class Conversation:
-    def __init__(self):
-        self.messages = []
+class Conversation(pydantic.BaseModel):
+    messages: list[Message] = []
 
     def add_message(self, message: Message):
+        if not message.message_id:
+            message.message_id = datetime.datetime.now().strftime("%Y%m%d%H%M%S") + str(hash(message.content))
+        if self.messages:
+            message.parent_message_id = self.messages[-1].message_id
         self.messages.append(message)
 
     def get_messages(self) -> list[Message]:
