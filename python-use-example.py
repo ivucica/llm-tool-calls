@@ -43,7 +43,7 @@ from models.assistant_message import AssistantMessage
 from models.tool_response_error import ToolResponseError
 from models.tool_response_success import ToolResponseSuccess
 from models.conversation import Conversation
-from models.wikipedia_content_request import WikipediaContentRequest
+from models.wikipedia_content_request import WikipediaContentRequest, WikipediaContentRequestGemini
 from models.date_object import DateObject
 
 
@@ -211,7 +211,7 @@ def fetch_wikipedia_content(search_query: str) -> dict:
 
 # Define tool for LM Studio
 WIKI_TOOL = pydantic_function_tool(
-    WikipediaContentRequest,
+    WikipediaContentRequestGemini if destrictify else WikipediaContentRequest,
     name="fetch_wikipedia_content",
     description=WikipediaContentRequest.__doc__)
 
