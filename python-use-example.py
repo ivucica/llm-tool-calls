@@ -733,7 +733,7 @@ def ask(model: str, messages: list[typing.Union[ToolMessage, ToolCallMessage, Us
                 messages += parse_tool_call(tool_call)
 
             return ask(
-                model=MODEL,
+                model=model,
                 messages=messages,
                 tools=tools,
                 tool_iterations=tool_iterations - 1,
@@ -741,7 +741,7 @@ def ask(model: str, messages: list[typing.Union[ToolMessage, ToolCallMessage, Us
         else:
             # We were not requested to make any tool calls.
             return handle_nontool_response(
-                model=MODEL, messages=messages, response=response)
+                model=model, messages=messages, response=response)
     else:
         # We were not supposed to make a tool call. Make a request without
         # tools, but with streaming enabled.
@@ -772,14 +772,14 @@ def ask(model: str, messages: list[typing.Union[ToolMessage, ToolCallMessage, Us
                 messages += parse_tool_call(tool_call)
 
             return ask(
-                model=MODEL,
+                model=model,
                 messages=messages,
                 tools=tools,
                 tool_iterations=tool_iterations - 1,
             )
         else:
             return handle_nontool_response(
-                model=MODEL, messages=messages, response=response)
+                model=model, messages=messages, response=response)
 
 
 def handle_nontool_response(
