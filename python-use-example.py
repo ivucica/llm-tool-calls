@@ -45,6 +45,7 @@ from models.tool_response_success import ToolResponseSuccess
 from models.conversation import Conversation
 from models.wikipedia_content_request import WikipediaContentRequest, WikipediaContentRequestGemini
 from models.date_object import DateObject
+from models.date_subtract_request import DateSubtractRequest
 
 
 def dict_to_message(message: dict) -> Message:
@@ -224,27 +225,6 @@ WIKI_TOOL_2['function']['parameters']['properties']['search_query']['description
 WIKI_TOOL_2['function']['parameters']['description'] = WIKI_TOOL_2['function']['description']
 
 
-class DateSubtractRequest(pydantic.BaseModel):
-    """
-    Compute difference in years. Process input dates as timestamps, subtract
-    timestamps, and return how many years passed, rounded down. Useful to
-    compute age. If the dates are fetched from a different source, do not
-    provide the inputs until you received them from a different function call.
-    """
-    later_date: DateObject = pydantic.Field(...,
-        description="Later (newer) of the two input dates (must be valid)."
-    )
-    earlier_date: DateObject = pydantic.Field(...,
-        description="Earlier (older) of the two input dates (must be valid)."
-    )
-    reason: str = pydantic.Field(...,
-        description=(
-            "Reason for date subtraction, e.g. 'calculate age' or 'compute"
-            " difference between first showing of X and birth of Y.")
-    )
-
-    class Config:
-        extra = pydantic.Extra.forbid
 
 DATE_SUBTRACT_TOOL = pydantic_function_tool(
     DateSubtractRequest,
