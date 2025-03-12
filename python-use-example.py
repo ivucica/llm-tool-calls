@@ -702,6 +702,8 @@ def ask(model: str, messages: list[typing.Union[ToolMessage, UserMessage, System
         list: Updated version of the argument 'messages', with tool responses
             etc attached.
     """
+    # copy messages we received so that we are permitted to modify them
+    messages = copy.deepcopy(messages)
     print(f"Sending a request with {len(messages)} messages in the context, offering {len(tools)} tools...")
     if tool_iterations > 0 and len(tools) > 0:
         with Spinner("Thinking..."):
