@@ -52,6 +52,7 @@ from absl import app, flags
 FLAGS = flags.FLAGS
 flags.DEFINE_string('input_file', None, 'Path to the input file containing the conversation')
 flags.DEFINE_string('output_file', None, 'Path to the output file to save the conversation')
+flags.DEFINE_bool('use_fake_client', False, 'Flag to use the fake client instead of the real client')
 
 def dict_to_message(message: dict) -> Message:
     """Convert to the correct type based on the role."""
@@ -616,7 +617,7 @@ def fetch_nonstreamed_response(model: str, messages: list[typing.Union[ToolMessa
     return response
 
 
-def ask(model: str, messages: list[typing.Union[ToolMessage, UserMessage, SystemMessage, AssistantMessage]], tools: list[dict[str, any]], tool_iterations: int = 1) -> list[typing.Union[ToolMessage, UserMessage, SystemMessage, AssistantMessage]]:
+def ask(model: str, messages: list[typing.Union[ToolMessage, UserMessage, SystemMessage, AssistantMessage]], tools: list[dict[str, any]], tool_iterations: int = 1, use_fake_client: bool = False) -> list[typing.Union[ToolMessage, UserMessage, SystemMessage, AssistantMessage]]:
     """ask sends the messages to the model and processes the tool calls.
 
     Args:
@@ -624,6 +625,7 @@ def ask(model: str, messages: list[typing.Union[ToolMessage, UserMessage, System
         messages (list): The messages to send to the model.
         tools (list): The tools to process.
         tool_iterations (int): The number of tool iterations to process.
+        use_fake_client (bool): Flag to use the fake client instead of the real client.
 
     Returns:
         list: Updated version of the argument 'messages', with tool responses
@@ -692,6 +694,7 @@ def ask(model: str, messages: list[typing.Union[ToolMessage, UserMessage, System
                 messages=messages,
                 tools=tools,
                 tool_iterations=tool_iterations - 1,
+                use_fake_client=use_fake_client
             )
         else:
             # We were not requested to make any tool calls.
@@ -732,6 +735,7 @@ def ask(model: str, messages: list[typing.Union[ToolMessage, UserMessage, System
                 messages=messages,
                 tools=tools,
                 tool_iterations=tool_iterations - 1,
+                use_fake_client=use_fake_client
             )
         else:
             return handle_nontool_response(
@@ -777,7 +781,7 @@ def handle_nontool_response(
     return messages
 
 
-def chat_loop(conversation: Conversation):
+def chat_loop(conversation: Conversation, use_fake_client: bool = False):
     """
     Main chat loop that processes user input and handles tool calls.
     """
@@ -819,6 +823,7 @@ def chat_loop(conversation: Conversation):
                 messages=messages,
                 tools=[WIKI_TOOL, WIKI_TOOL_2, DATE_SUBTRACT_TOOL],
                 tool_iterations=4,
+                use_fake_client=use_fake_client
             )
             # Assume 'messages' which we submitted into ask() are also returned
             # to us. TODO: maybe just allow ask() to submit new messages by
@@ -862,7 +867,7 @@ def main(argv):
     else:
         conversation = Conversation()
 
-    chat_loop(conversation)
+    chat_loop(conversation, use_fake_client=FLAGS.use_fake_client)
 
     if FLAGS.output_file:
         with open(FLAGS.output_file, 'w') as f:
