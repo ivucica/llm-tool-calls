@@ -781,7 +781,11 @@ def chat_loop(conversation: Conversation):
     """
     Main chat loop that processes user input and handles tool calls.
     """
-    conversation.add_message(SYSTEM_MESSAGE)
+    if not any(isinstance(msg, SystemMessage) for msg in conversation.messages):
+        # Add a system message to the conversation if it doesn't already exist.
+        # (This is a safeguard to ensure the system message is always present,
+        # but that it is not duplicated for e.g. loaded conversations or tests.)
+        conversation.add_message(SYSTEM_MESSAGE)
 
     print(
         "Assistant: "
