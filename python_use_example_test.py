@@ -5,10 +5,17 @@ import json
 from python_use_example import chat_loop, Conversation, UserMessage, AssistantMessage, ToolMessage, SystemMessage, fetch_wikipedia_content, subtract_dates_return_years, ask, parse_tool_call, handle_nontool_response, fetch_streamed_response, fetch_nonstreamed_response, destrictified_tools
 
 class TestChatLoop(unittest.TestCase):
+    """
+    Test cases for the chat loop functionality.
+    """
 
     @patch('builtins.input', side_effect=['Hello', 'quit'])
     @patch('sys.stdout', new_callable=StringIO)
     def test_single_round_chat(self, mock_stdout, mock_input):
+        """
+        Test a single round of chat interaction.
+        Expected output: The output should include the initial assistant message, the user message "Hello", and the assistant's response.
+        """
         conversation = Conversation()
         chat_loop(conversation)
         output = mock_stdout.getvalue()
@@ -19,6 +26,10 @@ class TestChatLoop(unittest.TestCase):
     @patch('builtins.input', side_effect=['Hello', 'How are you?', 'quit'])
     @patch('sys.stdout', new_callable=StringIO)
     def test_multiple_rounds_chat(self, mock_stdout, mock_input):
+        """
+        Test multiple rounds of chat interaction.
+        Expected output: The output should include the initial assistant message, the user messages "Hello" and "How are you?", and the assistant's responses.
+        """
         conversation = Conversation()
         chat_loop(conversation)
         output = mock_stdout.getvalue()
@@ -30,6 +41,10 @@ class TestChatLoop(unittest.TestCase):
     @patch('builtins.input', side_effect=['/save test_conversation.json', 'quit'])
     @patch('sys.stdout', new_callable=StringIO)
     def test_save_conversation(self, mock_stdout, mock_input):
+        """
+        Test saving the conversation to a JSON file.
+        Expected output: The output should be a saved JSON file 'test_conversation.json' containing the conversation with one system message.
+        """
         conversation = Conversation()
         chat_loop(conversation)
         with open('test_conversation.json', 'r') as f:
@@ -40,6 +55,10 @@ class TestChatLoop(unittest.TestCase):
     @patch('builtins.input', side_effect=['/load test_conversation.json', 'quit'])
     @patch('sys.stdout', new_callable=StringIO)
     def test_load_conversation(self, mock_stdout, mock_input):
+        """
+        Test loading the conversation from a JSON file.
+        Expected output: The output should be a loaded conversation from 'test_conversation.json' with one system message.
+        """
         conversation = Conversation()
         system_message = SystemMessage(content="System message")
         conversation.add_message(system_message)
@@ -50,9 +69,16 @@ class TestChatLoop(unittest.TestCase):
         self.assertEqual(conversation.messages[0].role, 'system')
 
 class TestFetchWikipediaContent(unittest.TestCase):
+    """
+    Test cases for the fetch_wikipedia_content function.
+    """
 
     @patch('python_use_example.urllib.request.urlopen')
     def test_fetch_wikipedia_content_success(self, mock_urlopen):
+        """
+        Test fetching Wikipedia content successfully.
+        Expected output: The output should be a successful response with the title 'Python (programming language)' and content 'Python is a programming language.'
+        """
         mock_response = MagicMock()
         mock_response.read.return_value = json.dumps({
             "query": {
@@ -75,6 +101,10 @@ class TestFetchWikipediaContent(unittest.TestCase):
 
     @patch('python_use_example.urllib.request.urlopen')
     def test_fetch_wikipedia_content_no_article(self, mock_urlopen):
+        """
+        Test fetching Wikipedia content when no article is found.
+        Expected output: The output should be an error response with the message 'No Wikipedia article found for 'NonExistentArticle'.'
+        """
         mock_response = MagicMock()
         mock_response.read.return_value = json.dumps({
             "query": {
@@ -89,13 +119,24 @@ class TestFetchWikipediaContent(unittest.TestCase):
 
     @patch('python_use_example.urllib.request.urlopen', side_effect=Exception("Network error"))
     def test_fetch_wikipedia_content_network_error(self, mock_urlopen):
+        """
+        Test fetching Wikipedia content when a network error occurs.
+        Expected output: The output should be an error response with the message 'Network error.'
+        """
         result = fetch_wikipedia_content("Python")
         self.assertEqual(result["status"], "error")
         self.assertEqual(result["message"], "Network error")
 
 class TestSubtractDatesReturnYears(unittest.TestCase):
+    """
+    Test cases for the subtract_dates_return_years function.
+    """
 
     def test_subtract_dates_return_years_success(self):
+        """
+        Test subtracting dates successfully.
+        Expected output: The output should be a successful response with the content indicating the difference in years between the dates.
+        """
         later_date = {"year": 2023, "month": 8, "day": 15}
         earlier_date = {"year": 2000, "month": 5, "day": 10}
         result = subtract_dates_return_years(later_date, earlier_date)
@@ -103,6 +144,10 @@ class TestSubtractDatesReturnYears(unittest.TestCase):
         self.assertIn("Difference in years between dates", result["content"])
 
     def test_subtract_dates_return_years_invalid_date(self):
+        """
+        Test subtracting dates with an invalid date.
+        Expected output: The output should be an error response with the message 'Invalid date: one or more keys is null in earlier date.'
+        """
         later_date = {"year": 2023, "month": 8, "day": 15}
         earlier_date = {"year": None, "month": 5, "day": 10}
         result = subtract_dates_return_years(later_date, earlier_date)
@@ -110,6 +155,10 @@ class TestSubtractDatesReturnYears(unittest.TestCase):
         self.assertEqual(result["message"], "Invalid date: one or more keys is null in earlier date")
 
     def test_subtract_dates_return_years_missing_keys(self):
+        """
+        Test subtracting dates with missing keys.
+        Expected output: The output should be an error response with the message 'Invalid date: one or more keys missing in earlier date.'
+        """
         later_date = {"year": 2023, "month": 8, "day": 15}
         earlier_date = {"year": 2000, "month": 5}
         result = subtract_dates_return_years(later_date, earlier_date)
@@ -117,9 +166,16 @@ class TestSubtractDatesReturnYears(unittest.TestCase):
         self.assertEqual(result["message"], "Invalid date: one or more keys missing in earlier date")
 
 class TestAskFunction(unittest.TestCase):
+    """
+    Test cases for the ask function.
+    """
 
     @patch('python_use_example.fetch_streamed_response')
     def test_ask_function_tool_calls(self, mock_fetch_streamed_response):
+        """
+        Test the ask function with tool calls.
+        Expected output: The output should include three messages: the user message, the assistant message, and the tool message.
+        """
         mock_response = AssistantMessage(
             role="assistant",
             content="Here is the information you requested.",
@@ -142,9 +198,16 @@ class TestAskFunction(unittest.TestCase):
         self.assertEqual(result[2].role, "tool")
 
 class TestParseToolCall(unittest.TestCase):
+    """
+    Test cases for the parse_tool_call function.
+    """
 
     @patch('python_use_example.fetch_wikipedia_content')
     def test_parse_tool_call_fetch_wikipedia_content(self, mock_fetch_wikipedia_content):
+        """
+        Test parsing a tool call for fetching Wikipedia content.
+        Expected output: The output should include one tool message with the content 'Python is a programming language.'
+        """
         mock_fetch_wikipedia_content.return_value = {
             "status": "success",
             "content": "Python is a programming language.",
@@ -164,8 +227,15 @@ class TestParseToolCall(unittest.TestCase):
         self.assertIn("Python is a programming language.", result[0].content)
 
 class TestHandleNontoolResponse(unittest.TestCase):
+    """
+    Test cases for the handle_nontool_response function.
+    """
 
     def test_handle_nontool_response_streamed(self):
+        """
+        Test handling a non-tool response that was streamed.
+        Expected output: The output should include two messages: the user message and the assistant message with the content 'Python is a programming language.'
+        """
         messages = [UserMessage(content="Tell me about Python")]
         response = AssistantMessage(
             role="assistant",
