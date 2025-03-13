@@ -29,7 +29,7 @@ jobs:
         pip install -r requirements.txt
     - name: Run tests
       run: |
-        coverage run -m pytest --junitxml=pytest-junit.xml python_use_example_test.py
+        coverage run -m pytest --junitxml=pytest-junit.xml python_use_example_test.py fakeserver_test.py
       continue-on-error: true
     - name: Generate coverage report
       run: |
