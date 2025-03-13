@@ -1,5 +1,31 @@
 {
-  "tasks": {
-    "test": "coverage run -m pytest python-use-example_test.py"
-  }
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "runArgs": [
+    "--cap-add=SYS_PTRACE",
+    "--security-opt",
+    "seccomp=unconfined"
+  ],
+  "workspaceFolder": "/workspace",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python"
+      ],
+      "settings": {
+        "terminal.integrated.shell.linux": "/bin/bash"
+      },
+      "tasks": [
+        {
+          "label": "test",
+          "type": "shell",
+          "command": "coverage run -m pytest python-use-example_test.py"
+        }
+      ]
+    }
+  },
+  "initializeCommand": "bash .devcontainer/initialize.sh",
+  "postCreateCommand": "pip install --upgrade pip && pip install -r requirements.txt"
 }
