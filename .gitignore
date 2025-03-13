@@ -8,3 +8,4 @@ coverage.md
 coverage.xml
 # the generated test conversation should really be written into a test output location
 test_conversation.json
+pytest-junit.xml

@@ -29,7 +29,7 @@ jobs:
         pip install -r requirements.txt
     - name: Run tests
       run: |
-        coverage run -m pytest python_use_example_test.py
+        coverage run -m pytest --junitxml=pytest-junit.xml python_use_example_test.py
       continue-on-error: true
     - name: Generate coverage report
       run: |
@@ -50,6 +50,23 @@ jobs:
       with:
         header: coverage
         path: coverage.md
+    - name: Upload JUnit test results
+      uses: actions/upload-artifact@v4
+      with:
+        name: junit-test-results
+        path: pytest-junit.xml
+    - name: Post junit report
+      uses: mikepenz/action-junit-report@v4
+      # if we integrate into main bit instead of having a separate workflow:
+      if: success() || failure() # always run even if the previous step fails
+      with:
+        # commit: ${{github.event.workflow_run.head_sha}}  # remove if we don't use separate workflow
+        report_paths: 'pytest-junit.xml'  # or something like '**/test.xml'
+        include_passed: true
+        detailed_summary: true
+        annotate_notice: true
+        follow_symlink: true
+      continue-on-error: true
     - name: Fail if tests failed
       if: failure()
       run: exit 1
