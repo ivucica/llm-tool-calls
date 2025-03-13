@@ -51,3 +51,27 @@ If you `mkdir cache`, then fetched articles will be stored locally.
 
 Another model that seems to work reasonably reliably is
 `lmstudio-community/mistral-nemo-instruct-2407`.
+
+## Running Tests
+
+To run the existing tests in `python_use_example_test.py`, follow these steps:
+
+1. Ensure you have the necessary dependencies installed. You can do this by running:
+    ```bash
+    python3 -m venv env
+    . env/bin/activate
+    python3 -m pip install -r requirements.txt
+    ```
+
+2. Run the tests using `pytest`. You can do this by executing the following command in your terminal:
+    ```bash
+    pytest python_use_example_test.py
+    ```
+
+The `pytest` command will discover and run all the tests defined in `python_use_example_test.py`. The test results will be displayed in the terminal.
+
+## GitHub Actions
+
+The repository includes a GitHub Actions workflow file `python-app.yml` to automate the testing process. The workflow is triggered on every push and pull request to the `main` branch. It sets up Python 3.8, installs dependencies, and runs `pytest` on `python_use_example_test.py`.
+
+You can view the results of the GitHub Actions workflow by navigating to the "Actions" tab of your GitHub repository. The workflow will show the status of each test run, including any errors or failures.
