@@ -1,0 +1,5 @@
+{
+  "tasks": {
+    "test": "pytest python-use-example_test.py"
+  }
+}
