@@ -100,6 +100,8 @@ SYSTEM_PROMPT = (
     "those machine-generated responses will be provided to you "
     "with the role 'tool'. "
 
+    "You answer in English, unless explicitly told to use another language. "
+
     "When asked about a topic, you can retrieve Wikipedia articles "
     "and cite information from them."
 
@@ -691,7 +693,8 @@ def ask(model: str, messages: list[typing.Union[ToolMessage, UserMessage, System
         else:
             # We were not requested to make any tool calls.
             return handle_nontool_response(
-                model=model, messages=messages, response=response)
+                model=model, messages=messages, response=response,
+                was_streamed=want_streamed)
     else:
         # We were not supposed to make a tool call. Make a request without
         # tools, but with streaming enabled.
@@ -730,7 +733,8 @@ def ask(model: str, messages: list[typing.Union[ToolMessage, UserMessage, System
             )
         else:
             return handle_nontool_response(
-                model=model, messages=messages, response=response)
+                model=model, messages=messages, response=response,
+                was_streamed=True)
 
 
 def handle_nontool_response(
@@ -741,7 +745,8 @@ def handle_nontool_response(
         response: typing.Union[
             ToolMessage, UserMessage, SystemMessage, AssistantMessage,
             Message,
-            openai.types.chat.ChatCompletion, openai.types.chat.ChatCompletionChunk]
+            openai.types.chat.ChatCompletion, openai.types.chat.ChatCompletionChunk],
+        was_streamed: bool = False
 ) -> list[typing.Union[
     ToolMessage, UserMessage, SystemMessage, AssistantMessage, Message]]:
     """Handle either streamed or nonstreamed response.
@@ -763,7 +768,7 @@ def handle_nontool_response(
     # Handle regular response
     # Print only if it was a non-streamed response since streamed responses
     # are printed as they come in.
-    if not is_streamed_response(response):
+    if not is_streamed_response(response) and not was_streamed:
         print("\nAssistant:", response.content)
     else:
         print("\n")
