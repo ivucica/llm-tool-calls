@@ -1,5 +1,5 @@
 {
   "tasks": {
-    "test": "pytest python-use-example_test.py"
+    "test": "coverage run -m pytest python-use-example_test.py"
   }
 }
