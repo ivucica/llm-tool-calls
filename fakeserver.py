@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, Response
 import json
 import threading
 import time
+from absl import app, flags
 
 app = Flask(__name__)
 
@@ -30,6 +31,13 @@ def stream_response(model, messages):
 
 def non_stream_response(model, messages):
     return {'model': model, 'messages': messages, 'response': 'This is a non-streaming response'}
+
+FLAGS = flags.FLAGS
+flags.DEFINE_integer('port', 5000, 'Port to run the server on')
+
+def main(argv):
+    del argv  # Unused
+    app.run(port=FLAGS.port)
 
 if __name__ == '__main__':
     app.run(port=5000)
