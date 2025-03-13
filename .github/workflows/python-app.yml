@@ -44,7 +44,8 @@ jobs:
     - name: Convert coverage report to markdown
       run: |
         pip install genbadge[coverage]
-        genbadge coverage -i coverage.xml -o coverage.md
+        genbadge coverage -i coverage.xml -o coverage.svg
+        echo '![Coverage](data:image/svg+xml;base64,'$(base64 -w 0 coverage.svg)')' > coverage.md
     - name: Post coverage report as comment
       uses: marocchino/sticky-pull-request-comment@v2
       with:
