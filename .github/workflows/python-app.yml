@@ -31,8 +31,20 @@ jobs:
       run: |
         coverage report
         coverage html
+        coverage xml
     - name: Upload coverage to GitHub
       uses: actions/upload-artifact@v2
       with:
         name: coverage-report
         path: coverage.xml
+    - name: Convert coverage report to markdown
+      run: |
+        pip install genbadge[coverage]
+        genbadge coverage -i coverage.xml -o coverage.md
+    - name: Post coverage report as comment
+      uses: marocchino/sticky-pull-request-comment@v2
+      permissions:
+        pull-requests: write
+      with:
+        header: coverage
+        path: coverage.md

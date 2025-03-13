@@ -2,6 +2,9 @@ cache/*
 _gemini_key.txt
 env/*
 __pycache__
+htmlcov/
 .coverage
+coverage.md
+coverage.xml
 # the generated test conversation should really be written into a test output location
 test_conversation.json
