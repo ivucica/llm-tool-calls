@@ -4,7 +4,7 @@ from io import StringIO
 import json
 import subprocess
 import time
-from python_use_example import chat_loop, Conversation, UserMessage, AssistantMessage, ToolMessage, SystemMessage, fetch_wikipedia_content, subtract_dates_return_years, ask, parse_tool_call, handle_nontool_response, fetch_streamed_response, fetch_nonstreamed_response, destrictified_tools
+from python_use_example import chat_loop, Conversation, UserMessage, AssistantMessage, ToolMessage, SystemMessage, fetch_wikipedia_content, subtract_dates_return_years, ask, parse_tool_call, handle_nontool_response, fetch_streamed_response, fetch_nonstreamed_response, destrictified_tools, ToolCall, Function
 
 def start_fake_server():
     server_process = subprocess.Popen(['python3', 'fakeserver.py'])
@@ -27,6 +27,11 @@ class TestChatLoop(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         stop_fake_server(cls.server_process)
+
+    def tearDown(self):
+        import os
+        if os.path.exists('test_conversation.json'):
+            os.remove('test_conversation.json')
 
     @patch('builtins.input', side_effect=['Hello', 'quit'])
     @patch('sys.stdout', new_callable=StringIO)
@@ -99,6 +104,11 @@ class TestFetchWikipediaContent(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         stop_fake_server(cls.server_process)
+
+    def tearDown(self):
+        import os
+        if os.path.exists('test_conversation.json'):
+            os.remove('test_conversation.json')
 
     @patch('python_use_example.urllib.request.urlopen')
     def test_fetch_wikipedia_content_success(self, mock_urlopen):
