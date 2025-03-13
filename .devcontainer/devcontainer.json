@@ -21,7 +21,7 @@
         {
           "label": "test",
           "type": "shell",
-          "command": "coverage run -m pytest python-use-example_test.py"
+          "command": "coverage run -m pytest python_use_example_test.py"
         }
       ]
     }
