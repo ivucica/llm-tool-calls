@@ -1,8 +1,3 @@
-"""
-LM Studio Tool Use Demo: Wikipedia Querying Chatbot
-Demonstrates how an LM Studio model can query Wikipedia
-"""
-
 # Standard library imports
 import copy
 import itertools
