@@ -9,4 +9,4 @@ export OPENAI_MODEL=models/gemini-2.0-pro-exp-02-05
 
 . env/bin/activate
 
-python3 python-use-example.py
+python3 python_use_example.py
