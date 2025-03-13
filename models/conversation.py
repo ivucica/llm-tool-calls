@@ -25,3 +25,12 @@ class Conversation(pydantic.BaseModel):
     def get_messages(self) -> list[Message]:
         """Get a _copy_ all the messages in the conversation."""
         return copy.deepcopy(self.messages)
+
+    def to_json(self) -> str:
+        """Serialize the Conversation instance to a JSON string."""
+        return self.json()
+
+    @classmethod
+    def from_json(cls, json_str: str) -> "Conversation":
+        """Deserialize a JSON string to a Conversation instance."""
+        return cls.parse_raw(json_str)
