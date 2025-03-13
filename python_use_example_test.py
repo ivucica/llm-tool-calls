@@ -2,12 +2,31 @@ import unittest
 from unittest.mock import patch, MagicMock
 from io import StringIO
 import json
+import subprocess
+import time
 from python_use_example import chat_loop, Conversation, UserMessage, AssistantMessage, ToolMessage, SystemMessage, fetch_wikipedia_content, subtract_dates_return_years, ask, parse_tool_call, handle_nontool_response, fetch_streamed_response, fetch_nonstreamed_response, destrictified_tools
+
+def start_fake_server():
+    server_process = subprocess.Popen(['python3', 'fakeserver.py'])
+    time.sleep(1)  # Give the server a second to start
+    return server_process
+
+def stop_fake_server(server_process):
+    server_process.terminate()
+    server_process.wait()
 
 class TestChatLoop(unittest.TestCase):
     """
     Test cases for the chat loop functionality.
     """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.server_process = start_fake_server()
+
+    @classmethod
+    def tearDownClass(cls):
+        stop_fake_server(cls.server_process)
 
     @patch('builtins.input', side_effect=['Hello', 'quit'])
     @patch('sys.stdout', new_callable=StringIO)
@@ -73,6 +92,14 @@ class TestFetchWikipediaContent(unittest.TestCase):
     Test cases for the fetch_wikipedia_content function.
     """
 
+    @classmethod
+    def setUpClass(cls):
+        cls.server_process = start_fake_server()
+
+    @classmethod
+    def tearDownClass(cls):
+        stop_fake_server(cls.server_process)
+
     @patch('python_use_example.urllib.request.urlopen')
     def test_fetch_wikipedia_content_success(self, mock_urlopen):
         """
@@ -132,6 +159,14 @@ class TestSubtractDatesReturnYears(unittest.TestCase):
     Test cases for the subtract_dates_return_years function.
     """
 
+    @classmethod
+    def setUpClass(cls):
+        cls.server_process = start_fake_server()
+
+    @classmethod
+    def tearDownClass(cls):
+        stop_fake_server(cls.server_process)
+
     def test_subtract_dates_return_years_success(self):
         """
         Test subtracting dates successfully.
@@ -170,6 +205,14 @@ class TestAskFunction(unittest.TestCase):
     Test cases for the ask function.
     """
 
+    @classmethod
+    def setUpClass(cls):
+        cls.server_process = start_fake_server()
+
+    @classmethod
+    def tearDownClass(cls):
+        stop_fake_server(cls.server_process)
+
     @patch('python_use_example.fetch_streamed_response')
     def test_ask_function_tool_calls(self, mock_fetch_streamed_response):
         """
@@ -202,6 +245,14 @@ class TestParseToolCall(unittest.TestCase):
     Test cases for the parse_tool_call function.
     """
 
+    @classmethod
+    def setUpClass(cls):
+        cls.server_process = start_fake_server()
+
+    @classmethod
+    def tearDownClass(cls):
+        stop_fake_server(cls.server_process)
+
     @patch('python_use_example.fetch_wikipedia_content')
     def test_parse_tool_call_fetch_wikipedia_content(self, mock_fetch_wikipedia_content):
         """
@@ -230,6 +281,14 @@ class TestHandleNontoolResponse(unittest.TestCase):
     """
     Test cases for the handle_nontool_response function.
     """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.server_process = start_fake_server()
+
+    @classmethod
+    def tearDownClass(cls):
+        stop_fake_server(cls.server_process)
 
     def test_handle_nontool_response_streamed(self):
         """
