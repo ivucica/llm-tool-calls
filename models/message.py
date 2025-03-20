@@ -16,6 +16,7 @@ class MultimodalContent(pydantic.BaseModel):
 
 class Message(pydantic.BaseModel):
     """A message in a conversation."""
+    # TODO: create a union type for the Message subclasses, rename this one to MessageBase.
     role: str = pydantic.Field(..., description="The role of the message sender")
     # Permitted values for role:
     # * system: messages added by the model developer (in this case us!)
