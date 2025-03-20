@@ -551,7 +551,8 @@ def fetch_streamed_response(
         # Gemini does not like null for content even if it itself did not supply content (it wants string or a list), so exclude_none=True.
         messages=messages_safe,
         tools=destrictified_tools(tools),
-        stream=True
+        stream=True,
+        temperature=0,
     )
     collected_content = ""
 
@@ -627,7 +628,8 @@ def fetch_nonstreamed_response(model: str, messages: list[typing.Union[ToolMessa
             model=model,
             # Gemini does not like null for content even if it itself did not supply content (it wants string or a list), so exclude_none=True.
             messages=[msg.dict(exclude_none=True) if not isinstance(msg, dict) else msg for msg in messages],  # TODO: why is role skipped without dict()?
-            tools=destrictified_tools(tools))
+            tools=destrictified_tools(tools),
+            temperature=0)
         response = client.chat.completions.create(
             **(request)
         )
