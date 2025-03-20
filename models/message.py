@@ -1,5 +1,5 @@
-import pydantic
 import typing
+import pydantic
 
 
 class MultimodalContent(pydantic.BaseModel):
