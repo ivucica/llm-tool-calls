@@ -44,6 +44,7 @@ from models.date_object import DateObject
 from models.date_subtract_request import DateSubtractRequest
 
 from absl import app, flags
+from absl import logging
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string('input_file', None, 'Path to the input file containing the conversation')
@@ -452,6 +453,8 @@ def parse_tool_call(tool_call: ToolCall) -> list[ToolMessage]:
                 'message': f'Sorry, assistant, but the tool you requested {tool_call.function} does not exist.'
             }
 
+        if not json.dumps(result):
+            logging.warning("Tool result for call id '%s' had empty content, this might cause a problem with stricter APIs like Gemini", tool_call.id)
         messages.append(
             ToolMessage(
                 role="tool",  # why is this not auto-set?
@@ -530,11 +533,23 @@ def fetch_streamed_response(
     tools: list[dict[str, any]]
 ) -> Message|ToolMessage|UserMessage|SystemMessage|AssistantMessage:
     """Fetch a streamed response from the model."""
+    messages_safe = copy.deepcopy(messages)
+    # Turn all messages into dictionaries. If they are not dictionaries, exclude
+    # their None fields to avoid sending nulls to the API.
+    messages_safe = [msg.dict(exclude_none=True) if not isinstance(msg, dict) else msg for msg in messages]  # TODO: why is role skipped without dict()?
+
+    if destrictify:
+        # Gemini API (or some models) don't like content being an empty string.
+        for msg in messages_safe:
+            if 'content' in msg and not msg['content']:
+                logging.warning("Gemini does not like empty content, removing it from message '%s'.", json.dumps(msg))
+                del msg['content']
+
     print("\nAssistant:", end=" ", flush=True)
     stream_response = client.chat.completions.create(
         model=model,
         # Gemini does not like null for content even if it itself did not supply content (it wants string or a list), so exclude_none=True.
-        messages=[msg.dict(exclude_none=True) if not isinstance(msg, dict) else msg for msg in messages],  # TODO: why is role skipped without dict()?
+        messages=messages_safe,
         tools=destrictified_tools(tools),
         stream=True
     )
@@ -683,11 +698,18 @@ def ask(model: str, messages: list[typing.Union[ToolMessage, UserMessage, System
                     )
                     for tool_call in tool_calls
                 ]
-                msg = AssistantMessage(
-                    role="assistant", # do we need this? it was needed on some other constructors
-                    content=response.choices[0].message.content,
-                    tool_calls=tool_calls,
-                )
+                content: str = response.choices[0].message.content
+                if content:
+                    msg = AssistantMessage(
+                        role="assistant", # do we need this? it was needed on some other constructors
+                        content=content,
+                        tool_calls=tool_calls,
+                    )
+                else:
+                    msg = AssistantMessage(
+                        role="assistant", # do we need this? it was needed on some other constructors
+                        tool_calls=tool_calls,
+                    )
                 messages.append(msg)
             else:
                 # Already in the right format.
