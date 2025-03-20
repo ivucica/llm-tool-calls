@@ -2,6 +2,7 @@
 import copy
 import itertools
 import json
+import hashlib
 import shutil
 import sys
 import threading
@@ -136,17 +137,30 @@ SYSTEM_MESSAGE = SystemMessage(
     content=SYSTEM_PROMPT,
 )
 
+WIKIPEDIA_TIMEOUT = 5.0
+
+
+def hash_string(s: str) -> str:
+    """Return hashed s, such as hex of MD5, safe for use in filenames."""
+    # hash() is not consistent across processes and its name is a bit misleading
+    # (it's not a cryptographic hash). We use MD5 here for consistency.
+    m = hashlib.md5()
+    m.update(s.encode('utf-8'))
+    return m.hexdigest()
+
 
 def fetch_wikipedia_content(search_query: str) -> dict:
     """Fetches wikipedia content for a given search_query"""
     # Compute hash of the query and try loading from local cache.
     # If not found, fetch from Wikipedia and store in cache.
-    hash_query = hash(search_query)
+    hash_query = hash_string(search_query)
     cache_file = f"cache/{hash_query}.json"
     if os.path.exists(cache_file):
-        with open(cache_file, "r") as f:
+        print(f" (Cache file for query '{search_query}' exists: {cache_file}")
+        with open(cache_file, "r", encoding='utf-8') as f:
             return json.load(f)
-
+    else:
+        print(f" (Connecting directly: cache file {cache_file} for query '{search_query}' does not exist")
     try:
         # Search for most relevant article
         search_url = "https://en.wikipedia.org/w/api.php"
@@ -159,7 +173,7 @@ def fetch_wikipedia_content(search_query: str) -> dict:
         }
 
         url = f"{search_url}?{urllib.parse.urlencode(search_params)}"
-        with urllib.request.urlopen(url) as response:
+        with urllib.request.urlopen(url, timeout=WIKIPEDIA_TIMEOUT) as response:
             search_data = json.loads(response.read().decode())
 
         if not search_data["query"]["search"]:
