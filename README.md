@@ -75,3 +75,9 @@ The `pytest` command will discover and run all the tests defined in `python_use_
 The repository includes a GitHub Actions workflow file `python-app.yml` to automate the testing process. The workflow is triggered on every push and pull request to the `main` branch. It sets up Python 3.8, installs dependencies, and runs `pytest` on `python_use_example_test.py`.
 
 You can view the results of the GitHub Actions workflow by navigating to the "Actions" tab of your GitHub repository. The workflow will show the status of each test run, including any errors or failures.
+
+## Example test prompts
+
+*   > compare pikachu and bulbasaur after looking them up and put it in a markdown table. tell me about what franchise they come from, and tell me history of companies that made that franchise
+*   > how long passed between birthday of Nikola Tesla and start of WW1?
+
