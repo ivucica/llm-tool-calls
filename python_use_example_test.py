@@ -92,6 +92,20 @@ class TestChatLoop(unittest.TestCase):
         self.assertEqual(len(conversation.messages), 1)
         self.assertEqual(conversation.messages[0].role, 'system')
 
+    @patch('builtins.input', side_effect=['/clear', 'quit'])
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_clear_conversation(self, mock_stdout, mock_input):
+        """
+        Test clearing the conversation history.
+        Expected output: The output should indicate that the conversation history has been cleared.
+        """
+        conversation = Conversation()
+        system_message = SystemMessage(content="System message")
+        conversation.add_message(system_message)
+        chat_loop(conversation)
+        self.assertEqual(len(conversation.messages), 1)
+        self.assertEqual(conversation.messages[0].role, 'system')
+
 class TestFetchWikipediaContent(unittest.TestCase):
     """
     Test cases for the fetch_wikipedia_content function.
