@@ -840,16 +840,19 @@ def chat_loop(conversation: Conversation):
 
         if user_input.startswith("/save "):
             filename = user_input.split(" ", 1)[1]
-            with open(filename, 'w') as f:
-                f.write(conversation.to_json())
+            conversation.save_history(filename)
             print(f"Conversation saved to {filename}")
             continue
 
         if user_input.startswith("/load "):
             filename = user_input.split(" ", 1)[1]
-            with open(filename, 'r') as f:
-                conversation = Conversation.from_json(f.read())
+            conversation.load_history(filename)
             print(f"Conversation loaded from {filename}")
+            continue
+
+        if user_input.startswith("/clear"):
+            conversation.clear_history()
+            print("Conversation history cleared.")
             continue
 
         user_message = UserMessage(content=user_input)
@@ -903,6 +906,12 @@ def main(argv):
             conversation = Conversation.from_json(f.read())
     else:
         conversation = Conversation()
+
+    # Load conversation history by default if a history file exists
+    default_history_file = "default_history.json"
+    if os.path.exists(default_history_file):
+        conversation.load_history(default_history_file)
+        print(f"Default conversation history loaded from {default_history_file}")
 
     chat_loop(conversation)
 

@@ -1,7 +1,9 @@
 import pydantic
 import copy
 import datetime
+import json
 from models.message import Message
+from models.system_message import SystemMessage
 
 class Conversation(pydantic.BaseModel):
     """Represents a series of messages in a conversation."""
@@ -34,3 +36,18 @@ class Conversation(pydantic.BaseModel):
     def from_json(cls, json_str: str) -> "Conversation":
         """Deserialize a JSON string to a Conversation instance."""
         return cls.parse_raw(json_str)
+
+    def clear_history(self):
+        """Clear the conversation history, keeping only the system prompt."""
+        self.messages = [msg for msg in self.messages if isinstance(msg, SystemMessage)]
+
+    def load_history(self, filename: str):
+        """Load conversation history from a JSON file."""
+        with open(filename, 'r') as f:
+            loaded_conversation = Conversation.from_json(f.read())
+        self.messages = loaded_conversation.messages
+
+    def save_history(self, filename: str):
+        """Save conversation history to a JSON file."""
+        with open(filename, 'w') as f:
+            f.write(self.to_json())
