@@ -31,6 +31,7 @@
   "initializeCommand": "bash .devcontainer/initialize.sh",
   "postCreateCommand": "pip install --upgrade pip && pip install -r requirements.txt",
   "tasks": {
-    "test": "pytest python_use_example_test.py; pytest fake_server_test.py"
+    "test": "pytest python_use_example_test.py; pytest fake_server_test.py",
+    "build": "pip install -r requirements.txt"
   }
 }

@@ -23,6 +23,7 @@ class Conversation(pydantic.BaseModel):
         # print(f" (adding message to conversation: role={message.role}, now {len(self.messages)} messages)")
 
         self.messages.append(copy.deepcopy(message))
+        self.save_default_history()
 
     def get_messages(self) -> list[Message]:
         """Get a _copy_ all the messages in the conversation."""
@@ -40,14 +41,22 @@ class Conversation(pydantic.BaseModel):
     def clear_history(self):
         """Clear the conversation history, keeping only the system prompt."""
         self.messages = [msg for msg in self.messages if isinstance(msg, SystemMessage)]
+        self.save_default_history()
 
     def load_history(self, filename: str):
         """Load conversation history from a JSON file."""
         with open(filename, 'r') as f:
             loaded_conversation = Conversation.from_json(f.read())
         self.messages = loaded_conversation.messages
+        self.save_default_history()
 
     def save_history(self, filename: str):
         """Save conversation history to a JSON file."""
         with open(filename, 'w') as f:
+            f.write(self.to_json())
+
+    def save_default_history(self):
+        """Save default conversation history to a JSON file."""
+        default_history_file = "default_history.json"
+        with open(default_history_file, 'w') as f:
             f.write(self.to_json())
