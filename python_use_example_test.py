@@ -33,6 +33,14 @@ class TestChatLoop(unittest.TestCase):
         if os.path.exists('test_conversation.json'):
             os.remove('test_conversation.json')
 
+    def test_client_address_and_port(self):
+        """
+        Minimal test to verify the client points at the correct address and port.
+        """
+        response = requests.get('http://127.0.0.1:5000/v1/models')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("model1", response.json())
+
     @patch('builtins.input', side_effect=['Hello', 'quit'])
     @patch('sys.stdout', new_callable=StringIO)
     def test_single_round_chat(self, mock_stdout, mock_input):

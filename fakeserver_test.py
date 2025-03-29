@@ -36,5 +36,13 @@ class TestFakeServer(unittest.TestCase):
         self.assertIn("model", response.json())
         self.assertIn("messages", response.json())
 
+    def test_client_address_and_port(self):
+        """
+        Minimal test to verify the client points at the correct address and port.
+        """
+        response = requests.get('http://127.0.0.1:5000/v1/models')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("model1", response.json())
+
 if __name__ == '__main__':
     unittest.main()
