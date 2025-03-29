@@ -217,6 +217,7 @@ def fetch_wikipedia_content(search_query: str) -> dict:
             "title": pages[page_id]["title"],
         }
         try:
+            # TODO: replace open with something mockable
             with open(cache_file, "w", encoding="utf-8") as f:
                 json.dump(resp, f)
         except Exception as e:

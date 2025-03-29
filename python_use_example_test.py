@@ -5,6 +5,7 @@ import json
 import subprocess
 import time
 from python_use_example import chat_loop, Conversation, UserMessage, AssistantMessage, ToolMessage, SystemMessage, fetch_wikipedia_content, subtract_dates_return_years, ask, parse_tool_call, handle_nontool_response, fetch_streamed_response, fetch_nonstreamed_response, destrictified_tools, ToolCall, Function
+import python_use_example
 
 def start_fake_server():
     server_process = subprocess.Popen(['python3', 'fakeserver.py'])
@@ -23,6 +24,28 @@ class TestChatLoop(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.server_process = start_fake_server()
+
+    def setUp(self):
+        super().setUp()
+
+        # Ensure HTTP client _only_ connects to the fake server (but otherwise
+        # is operating exactly as intended).
+        #
+        # This should prevent both connecting to Wikipedia and to non-fake
+        # 'LLM' API servers.
+        #
+        # Add a patch to the urllib.request.urlopen used by both the OpenAI API
+        # client and the Wikipedia client. The intention is to allow it to be
+        # used as-original, but just prevent connections to the real servers.
+        self.enterContext(patch.object(
+            python_use_example.urllib.request, 'urlopen',
+            side_effect=Exception("Network error")).start())
+
+        # Patch out use of file open, too, so cache files aren't accessed or
+        # created.
+        self.enterContext(patch.object(
+            python_use_example, 'open',
+            side_effect=Exception("File access error")).start())
 
     @classmethod
     def tearDownClass(cls):
