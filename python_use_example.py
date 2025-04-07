@@ -1033,6 +1033,22 @@ class LMSChatCompletionChunk(openai.types.chat.ChatCompletionChunk):
     runtime: LMSChatCompletionRuntime = pydantic.Field(
         ..., description="Runtime info in the chat completion")
 
+def embedding_test(model: str, embedding: str):
+    """Use openai api for embeddings."""
+    try:
+        print("Requesting from API at ", base_url)
+        response = client.embeddings.create(
+            model=model,
+            input=embedding
+        )
+        print(f"Response: {response.to_json()}")
+    except openai.BadRequestError as e:
+        print(f"Error: {e}")
+        #print('Request was: ', model, messages, tools)
+        #class tmp(pydantic.BaseModel):
+        #    req: openai.types.chat.completion_create_params.CompletionCreateParamsNonStreaming        
+        #print(tmp(req=request).json(exclude_unset=True))
+        raise e
 
 def chat_loop(conversation: Conversation):
     """
@@ -1119,6 +1135,14 @@ def chat_loop(conversation: Conversation):
             else:
                 print(f"Model: default: {MODEL}")
                 continue
+
+        if user_input.startswith("/embed_test "):
+            embedding = user_input[len("/embed_test "):]
+            # First arg will be model, until the first space.
+            embmod = embedding.split(" ", 1)[0]
+            embedding = embedding[len(embmod):]
+            embedding_test(embmod, embedding)
+            continue
 
         user_message = UserMessage(content=user_input)
         conversation.add_message(user_message)
