@@ -171,6 +171,7 @@ def fetch_wikipedia_content(search_query: str) -> dict:
             "list": "search",
             "srsearch": search_query,
             "srlimit": 1,
+            "sort": "relevance",
         }
 
         url = f"{search_url}?{urllib.parse.urlencode(search_params)}"
