@@ -814,8 +814,103 @@ def get_model_list() -> list[str]:
         print(f"Error fetching model list: {e}")
         return []
 
+class LMSModel(pydantic.BaseModel):
+    """Single model in the LM Studio API response.
+
+    Example from documentation:
+    {
+      "id": "qwen2-vl-7b-instruct",
+      "object": "model",
+      "type": "vlm",
+      "publisher": "mlx-community",
+      "arch": "qwen2_vl",
+      "compatibility_type": "mlx",
+      "quantization": "4bit",
+      "state": "not-loaded",
+      "max_context_length": 32768
+    },
+    """
+    id: str = pydantic.Field(..., description="Model ID")
+    object: typing.Literal['model'] = pydantic.Field(..., description="Object type")
+    type: typing.Literal['vlm']|typing.Literal['llm']|typing.Literal['embeddings'] = pydantic.Field(..., description="Model type (for example, 'vlm' or 'llm' or 'embeddings')")
+    publisher: str = pydantic.Field(..., description="Model publisher")
+    arch: str = pydantic.Field(..., description="Model architecture")
+    compatibility_type: str = pydantic.Field(..., description="Model compatibility type (for example, 'mlx' or 'gguf')")
+    quantization: str = pydantic.Field(..., description="Model quantization")
+    state: str = pydantic.Field(..., description="Model state (loaded or not-loaded, for example)")
+    max_context_length: int = pydantic.Field(..., description="Max context length of the model")
+
+class LMSGetModelsResponse(pydantic.BaseModel):
+    """Response from LM Studio API for listing models.
+
+    Example from documentation:
+    {
+        "object": "list",
+        "data": [
+            {
+                "id": "qwen2-vl-7b-instruct",
+                "object": "model",
+                "type": "vlm",
+                "publisher": "mlx-community",
+                "arch": "qwen2_vl",
+                "compatibility_type": "mlx",
+                "quantization": "4bit",
+                "state": "not-loaded",
+                "max_context_length": 32768
+            },
+            {
+                "id": "meta-llama-3.1-8b-instruct",
+                "object": "model",
+                "type": "llm",
+                "publisher": "lmstudio-community",
+                "arch": "llama",
+                "compatibility_type": "gguf",
+                "quantization": "Q4_K_M",
+                "state": "not-loaded",
+                "max_context_length": 131072
+            },
+            {
+                "id": "text-embedding-nomic-embed-text-v1.5",
+                "object": "model",
+                "type": "embeddings",
+                "publisher": "nomic-ai",
+                "arch": "nomic-bert",
+                "compatibility_type": "gguf",
+                "quantization": "Q4_0",
+                "state": "not-loaded",
+                "max_context_length": 2048
+            }
+        ]
+    }
+    """
+    object: str = pydantic.Field(..., description="Object type")
+    data: list[LMSModel] = pydantic.Field(..., description="List of models")
+
 def list_models():
     """List all available models."""
+
+    # First try using LM Studio API.
+    # If that fails, try using OpenAI API.
+
+    try:
+        # Manually build the HTTP request to endpoint /api/v0/models, to avoid
+        # using the LM Studio client. Regular get request.
+        url = f"{base_url}/api/v0/models"
+        req = urllib.request.Request(url)
+        # Get response.
+        with urllib.request.urlopen(req) as response:
+            data = response.read()
+            models = json.loads(data)
+
+            # Use Pydantic model we described.
+            models = LMSGetModelsResponse(**models)      
+
+            print("Available models:")
+            for model in models:
+                print(f"- {model['id']} - {model['publisher']}")
+    except:  # expected to fail if not using LM Studio
+        pass
+
     try:
         models = client.models.list()
         print("Available models:")
@@ -824,6 +919,120 @@ def list_models():
             print(f"- {model.id} - {model.owned_by}")
     except Exception as e:
         print(f"Error listing models: {e}")
+
+
+class LMSChatCompletionStats(pydantic.BaseModel):
+    """Pydantic wrapper for LM Studio chat completion stats."""
+    tokens_per_second: float = pydantic.Field(..., description="Tokens per second")
+    time_to_first_token: float = pydantic.Field(..., description="Time to first token")
+    generation_time: float = pydantic.Field(..., description="Generation time")
+    stop_reason: str = pydantic.Field(..., description="Stop reason")
+
+
+class LMSChatCompletionModelInfo(pydantic.BaseModel):
+    """Pydantic wrapper for LM Studio chat completion model info.
+
+    Example from docs:
+    {
+        "arch": "granite",
+        "quant": "Q4_K_M",
+        "format": "gguf",
+        "context_length": 4096
+    }
+    """
+    arch: str = pydantic.Field(..., description="Model architecture")
+    quant: str = pydantic.Field(..., description="Model quantization")
+    format: str = pydantic.Field(..., description="Model format")
+    context_length: int = pydantic.Field(..., description="Model context length")
+
+
+class LMSChatCompletionRuntime(pydantic.BaseModel):
+    """Pydantic wrapper for LM Studio chat completion runtime info.
+
+    Example from docs:
+    {
+        "name": "llama.cpp-mac-arm64-apple-metal-advsimd",
+        "version": "1.3.0",
+        "supported_formats": ["gguf"]
+    }
+    """
+    name: str = pydantic.Field(..., description="Runtime name")
+    version: str = pydantic.Field(..., description="Runtime version")
+    supported_formats: list[str] = pydantic.Field(..., description="Supported formats")
+
+
+class LMSChatCompletionWrapper(openai.types.chat.ChatCompletion):
+    """Pydantic wrapper for LM Studio chat completion response w/o delta.
+
+    At /api/v0/chat/completions.
+
+    Mostly like OpenAI version, but with a few extras.
+
+    Example from docs:
+    {
+        "id": "chatcmpl-i3gkjwthhw96whukek9tz",
+        "object": "chat.completion",
+        "created": 1731990317,
+        "model": "granite-3.0-2b-instruct",
+        "choices": [
+            {
+                "index": 0,
+                "logprobs": null,
+                "finish_reason": "stop",
+                "message": {
+                    "role": "assistant",
+                    "content": "Greetings, I'm a helpful AI, here to assist,\nIn providing answers, with no distress.\nI'll keep it short and sweet, in rhyme you'll find,\nA friendly companion, all day long you'll bind."
+                }
+            }
+        ],
+        "usage": {
+            "prompt_tokens": 24,
+            "completion_tokens": 53,
+            "total_tokens": 77
+        },
+        "stats": {
+            "tokens_per_second": 51.43709529007664,
+            "time_to_first_token": 0.111,
+            "generation_time": 0.954,
+            "stop_reason": "eosFound"
+        },
+        "model_info": {
+            "arch": "granite",
+            "quant": "Q4_K_M",
+            "format": "gguf",
+            "context_length": 4096
+        },
+        "runtime": {
+            "name": "llama.cpp-mac-arm64-apple-metal-advsimd",
+            "version": "1.3.0",
+            "supported_formats": ["gguf"]
+        }
+    """
+    stats: LMSChatCompletionStats = pydantic.Field(
+        ..., description="Stats about the chat completion")
+    model_info: LMSChatCompletionModelInfo = pydantic.Field(
+        ..., description="Model info in the chat completion")
+    runtime: LMSChatCompletionRuntime = pydantic.Field(
+        ..., description="Runtime info in the chat completion")
+
+
+class LMSChatCompletionChunk(openai.types.chat.ChatCompletionChunk):
+    """Pydantic wrapper for LM Studio chat completion response w/ delta.
+
+    At /api/v0/chat/completions.
+
+    Mostly like OpenAI version, but with a few extras.
+
+    
+    Like LMSChatCompletion, but for streaming responses.
+    """
+    stats: LMSChatCompletionStats = pydantic.Field(
+        ..., description="Stats about the chat completion")
+    model_info: LMSChatCompletionModelInfo = pydantic.Field(
+        ..., description="Model info in the chat completion")
+    runtime: LMSChatCompletionRuntime = pydantic.Field(
+        ..., description="Runtime info in the chat completion")
+
 
 def chat_loop(conversation: Conversation):
     """
