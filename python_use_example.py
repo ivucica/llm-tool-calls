@@ -857,13 +857,13 @@ def chat_loop(conversation: Conversation):
         "science, people, places, or concepts - or we can just chat about "
         "anything else!"
     )
-    print("(Type 'quit' to exit)")
+    print("(Type '/quit' to exit)")
 
     while True:
         user_input = input("\nYou: ").strip()
         readline.write_history_file("readline.history") #os.path.expanduser("~/.python_use_example_history"))
 
-        if user_input.lower() == "quit":
+        if user_input.lower() == "/quit":
             break
 
         if user_input.startswith("/save "):
