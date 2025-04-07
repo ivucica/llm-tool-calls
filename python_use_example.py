@@ -830,10 +830,26 @@ def chat_loop(conversation: Conversation):
     Main chat loop that processes user input and handles tool calls.
     """
     if not any(isinstance(msg, SystemMessage) for msg in conversation.messages):
-        # Add a system message to the conversation if it doesn't already exist.
-        # (This is a safeguard to ensure the system message is always present,
-        # but that it is not duplicated for e.g. loaded conversations or tests.)
-        conversation.add_message(SYSTEM_MESSAGE)
+        if any(msg.role == 'system' for msg in conversation.messages):
+            # TODO: fix the loading of messages from file to ensure correct
+            # class is used, and add a test for it
+            print("WARNING: system message is not a SystemMessage object, this might cause problems")
+        else:
+            # Add a system message to the conversation if it doesn't already exist.
+            # (This is a safeguard to ensure the system message is always present,
+            # but that it is not duplicated for e.g. loaded conversations or tests.)
+            conversation.add_message(SYSTEM_MESSAGE)
+    # TODO: move this maintenance operation to load of conversation
+    # Remove system prompt aside from the first one. Identify both by role
+    # and class type.
+    before_len = len(conversation.messages)
+    conversation.messages = [conversation.messages[0]] + [
+        msg for msg in conversation.messages[1:] if (
+            isinstance(msg, SystemMessage) 
+            and msg.role == "system")]
+    after_len = len(conversation.messages)
+    if after_len != before_len:
+        print(f"Removed {before_len - after_len} spurious system messages from conversation history.")
 
     print(
         "Assistant: "
