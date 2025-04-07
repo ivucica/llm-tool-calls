@@ -50,23 +50,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('input_file', None, 'Path to the input file containing the conversation')
 flags.DEFINE_string('output_file', None, 'Path to the output file to save the conversation')
 
-def dict_to_message(message: dict) -> Message:
-    """Convert to the correct type based on the role."""
-    if 'role' not in message:
-        # Create base class.
-        message = Message(**message)
-    elif message["role"] == "user":
-        message = UserMessage(**message)
-    elif message["role"] == "assistant":
-        message = AssistantMessage(**message)
-    elif message["role"] == "system":
-        message = SystemMessage(**message)
-    elif message["role"] == "tool":
-        message = ToolMessage(**message)
-    else:
-        print(f"Unknown role: {message['role']}")
-        message = Message(**message)
-    return message
+from models import dict_to_message # TODO: deprecate use of this as an alias, move to some other file
 
 # --- MODIFIED pydantic_function_tool ---
 #del pydantic_function_tool

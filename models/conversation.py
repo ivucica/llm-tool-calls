@@ -4,6 +4,7 @@ import datetime
 import json
 from models.message import Message
 from models.system_message import SystemMessage
+from models import dict_to_message  # Defined in __init__.py for now.
 
 class Conversation(pydantic.BaseModel):
     """Represents a series of messages in a conversation."""
