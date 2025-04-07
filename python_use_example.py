@@ -1176,6 +1176,18 @@ def main(argv):
     try: readline.read_history_file("readline.history") #os.path.expanduser("~/.python_use_example_history"))
     except: pass
 
+    # Set up completions for supported commands.
+    readline.set_completer_delims(" \t\n;")
+    readline.set_completer(lambda text, state: [
+        cmd for cmd in [
+            "/quit",
+            "/save",
+            "/load",
+            "/clear",
+            "/models",
+            "/model",
+        ] if cmd.startswith(text)][state])
+
     if FLAGS.input_file:
         with open(FLAGS.input_file, 'r') as f:
             conversation = Conversation.from_json(f.read())
