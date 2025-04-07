@@ -3,6 +3,7 @@ import copy
 import itertools
 import json
 import hashlib
+import readline
 import shutil
 import sys
 import threading
@@ -844,6 +845,8 @@ def chat_loop(conversation: Conversation):
 
     while True:
         user_input = input("\nYou: ").strip()
+        readline.write_history_file("readline.history") #os.path.expanduser("~/.python_use_example_history"))
+
         if user_input.lower() == "quit":
             break
 
@@ -938,6 +941,16 @@ def chat_loop(conversation: Conversation):
 def main(argv):
     del argv  # Unused
 
+    readline.set_auto_history(True)
+    readline.parse_and_bind("tab: complete")
+    # readline.parse_and_bind("set editing-mode vi")
+    readline.parse_and_bind("set show-all-if-ambiguous on")
+    readline.parse_and_bind("set skip-completed-text on")
+    try: readline.read_init_file()
+    except: pass
+    try: readline.read_history_file("readline.history") #os.path.expanduser("~/.python_use_example_history"))
+    except: pass
+
     if FLAGS.input_file:
         with open(FLAGS.input_file, 'r') as f:
             conversation = Conversation.from_json(f.read())
@@ -955,6 +968,7 @@ def main(argv):
     if FLAGS.output_file:
         with open(FLAGS.output_file, 'w') as f:
             f.write(conversation.to_json())
+    readline.write_history_file("readline.history") #os.path.expanduser("~/.python_use_example_history"))
 
 if __name__ == "__main__":
     # At start, verify that messages include roles correctly. This should be a
