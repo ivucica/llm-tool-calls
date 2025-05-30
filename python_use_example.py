@@ -11,6 +11,7 @@ import time
 import urllib.parse
 import urllib.request
 import typing
+import os  # P1693
 
 # Third-party imports
 from openai import OpenAI, pydantic_function_tool
@@ -18,7 +19,6 @@ import openai
 import pydantic
 
 # Initialize LM Studio client
-import os
 base_url = os.getenv("OPENAI_API", default="http://0.0.0.0:5001/v1")
 client = OpenAI(base_url=base_url, api_key=os.getenv("OPENAI_API_KEY", default="lm-studio"))
 MODEL = os.getenv("OPENAI_MODEL", default="mlx-community/llama-3.2-3b-instruct")
@@ -1007,6 +1007,7 @@ class LMSChatCompletionWrapper(openai.types.chat.ChatCompletion):
             "version": "1.3.0",
             "supported_formats": ["gguf"]
         }
+    }
     """
     stats: LMSChatCompletionStats = pydantic.Field(
         ..., description="Stats about the chat completion")
@@ -1163,8 +1164,22 @@ def chat_loop(conversation: Conversation):
             sys.exit(1)
 
 
+def show_splash_screen():  # P98ac
+    splash_text = "Welcome to LLM Tool Calls"
+    terminal_width = shutil.get_terminal_size().columns
+    terminal_height = shutil.get_terminal_size().lines
+    centered_text = splash_text.center(terminal_width)
+    red_text = f"\033[91m{centered_text}\033[0m"
+    print("\n" * (terminal_height // 2))
+    print(red_text)
+    print("\n" * (terminal_height // 2))
+    time.sleep(5)
+
+
 def main(argv):
     del argv  # Unused
+
+    show_splash_screen()  # P2963
 
     readline.set_auto_history(True)
     readline.parse_and_bind("tab: complete")
