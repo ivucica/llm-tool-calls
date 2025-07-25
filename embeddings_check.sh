@@ -21,6 +21,6 @@ set -v
 
 curl $OPENAI_HEADER -X POST -H "Content-Type: application/json" -d '{
   "model": "gaianet/text-embedding-nomic-embed-text-v1.5-embedding",
-  "input": "${TEXT}"
+  "input": "'"${TEXT}"'"
 }' --max-time 15.0 "${OPENAI_API}""/embeddings"
 
