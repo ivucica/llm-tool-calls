@@ -2,6 +2,7 @@ import pydantic
 import copy
 import datetime
 import json
+import typing
 from models.message import Message
 from models.system_message import SystemMessage
 from models import dict_to_message  # Defined in __init__.py for now.
@@ -9,9 +10,9 @@ from models import dict_to_message  # Defined in __init__.py for now.
 class Conversation(pydantic.BaseModel):
     """Represents a series of messages in a conversation."""
     messages: list[Message] = []
-    active_model: str|None = None  # None indicates use of default model.
+    active_model: typing.Optional[str] = None  # None indicates use of default model.
 
-    def add_message(self, message: Message|dict):
+    def add_message(self, message: typing.Union[Message, dict]):
         """Add a new message to the conversation, and assign message IDs."""
         if isinstance(message, dict):
             message = dict_to_message(message)

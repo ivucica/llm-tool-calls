@@ -484,7 +484,7 @@ def parse_tool_call(tool_call: ToolCall) -> list[ToolMessage]:
     return messages
 
 
-def is_streamed_response(response: openai.types.chat.ChatCompletion | openai.types.chat.ChatCompletionChunk) -> bool:
+def is_streamed_response(response: typing.Union[openai.types.chat.ChatCompletion, openai.types.chat.ChatCompletionChunk]) -> bool:
     """Check if the response is streamed."""
     if isinstance(response, openai.types.chat.ChatCompletion):
         return False
@@ -492,7 +492,7 @@ def is_streamed_response(response: openai.types.chat.ChatCompletion | openai.typ
         return bool(response.choices[0].delta)
 
 
-def has_tool_calls(response: openai.types.chat.ChatCompletion | openai.types.chat.ChatCompletionChunk | AssistantMessage) -> bool:
+def has_tool_calls(response: typing.Union[openai.types.chat.ChatCompletion, openai.types.chat.ChatCompletionChunk, AssistantMessage]) -> bool:
     """Check if the response contains tool calls.
 
     Args:
@@ -520,7 +520,7 @@ def fetch_streamed_response(
     model: str, 
     messages: list[typing.Union[ToolMessage, UserMessage, SystemMessage, AssistantMessage]],
     tools: list[dict[str, any]]
-) -> Message|ToolMessage|UserMessage|SystemMessage|AssistantMessage:
+) -> typing.Union[Message, ToolMessage, UserMessage, SystemMessage, AssistantMessage]:
     """Fetch a streamed response from the model."""
     messages_safe = copy.deepcopy(messages)
     # Turn all messages into dictionaries. If they are not dictionaries, exclude
@@ -832,7 +832,7 @@ class LMSModel(pydantic.BaseModel):
     """
     id: str = pydantic.Field(..., description="Model ID")
     object: typing.Literal['model'] = pydantic.Field(..., description="Object type")
-    type: typing.Literal['vlm']|typing.Literal['llm']|typing.Literal['embeddings'] = pydantic.Field(..., description="Model type (for example, 'vlm' or 'llm' or 'embeddings')")
+    type: typing.Literal['vlm', 'llm', 'embeddings'] = pydantic.Field(..., description="Model type (for example, 'vlm' or 'llm' or 'embeddings')")
     publisher: str = pydantic.Field(..., description="Model publisher")
     arch: str = pydantic.Field(..., description="Model architecture")
     compatibility_type: str = pydantic.Field(..., description="Model compatibility type (for example, 'mlx' or 'gguf')")
