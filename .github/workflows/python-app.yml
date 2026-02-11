@@ -39,7 +39,7 @@ jobs:
     - name: Upload coverage to GitHub
       uses: actions/upload-artifact@v4
       with:
-        name: coverage-report
+        name: coverage-report-${{ matrix.python-version }}
         path: coverage.xml
     - name: Convert coverage report to markdown
       run: |
@@ -54,7 +54,7 @@ jobs:
     - name: Upload JUnit test results
       uses: actions/upload-artifact@v4
       with:
-        name: junit-test-results
+        name: junit-test-results-${{ matrix.python-version }}
         path: pytest-junit.xml
     - name: Post junit report
       uses: mikepenz/action-junit-report@v4
