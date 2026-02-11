@@ -28,6 +28,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
     - name: Run tests
+      id: run_tests
       run: |
         coverage run -m pytest --junitxml=pytest-junit.xml python_use_example_test.py fakeserver_test.py
       continue-on-error: true
@@ -69,5 +70,5 @@ jobs:
         follow_symlink: true
       continue-on-error: true
     - name: Fail if tests failed
-      if: failure()
+      if: always() && steps.run_tests.outcome == 'failure'
       run: exit 1
