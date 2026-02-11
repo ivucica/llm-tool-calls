@@ -4,3 +4,4 @@ absl-py >= 1.0.0
 coverage
 pytest
 flask
+requests
